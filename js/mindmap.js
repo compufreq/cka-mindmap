@@ -305,15 +305,15 @@
       var w = measureTextWidth(line.trim(), centerFontSize, 'bold');
       if (w > maxLineWidth) maxLineWidth = w;
     });
-    var halfW = maxLineWidth / 2 + 16;
-    var halfH = centerTextHeight / 2 + 10;
-    var radiusFromText = Math.sqrt(halfW * halfW + halfH * halfH) + 8;
-    var centerR = Math.max(radiusFromText, 50);
+    var halfW = maxLineWidth / 2 + 10;
+    var halfH = centerTextHeight / 2 + 6;
+    var radiusFromText = Math.sqrt(halfW * halfW + halfH * halfH) + 4;
+    var centerR = Math.max(radiusFromText, 45);
 
     // Branch orbit radius: ensure minimum gap between center circle edge and branch nodes
-    var minGap = 110;
-    var maxRadius = Math.min(width, height) * 0.40;
-    var radius = Math.max(centerR + minGap, Math.min(maxRadius, numNodes * 50));
+    var minGap = 130;
+    var maxRadius = Math.min(width, height) * 0.42;
+    var radius = Math.max(centerR + minGap, Math.min(maxRadius, Math.max(numNodes * 55, 280)));
 
     // Compute branch node positions around the center
     var nodePositions = [];
