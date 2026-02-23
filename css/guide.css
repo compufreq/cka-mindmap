@@ -463,6 +463,10 @@
 }
 
 @media (max-width: 768px) {
+  .guide-back-btn {
+    display: none;
+  }
+
   .guide-sidebar {
     position: fixed;
     top: 0;
