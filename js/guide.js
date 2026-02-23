@@ -20,6 +20,39 @@
     return params.get('id') || 'kubernetes';
   }
 
+  function getReferrerPage() {
+    var params = new URLSearchParams(window.location.search);
+    return params.get('from') || '';
+  }
+
+  function setupBackNavigation() {
+    var fromPage = getReferrerPage();
+    var backUrl = fromPage ? '../index.html#' + fromPage : '../index.html#main';
+
+    // Update the existing "Mind Map" breadcrumb link to return to the correct page
+    var breadcrumbLink = document.querySelector('.breadcrumb-link');
+    if (breadcrumbLink) {
+      breadcrumbLink.href = backUrl;
+    }
+
+    // Also update the logo link
+    var logoLink = document.querySelector('.logo');
+    if (logoLink) {
+      logoLink.href = backUrl;
+    }
+
+    // Add a back button in the header for easy navigation (especially on mobile)
+    var backBtn = document.createElement('a');
+    backBtn.href = backUrl;
+    backBtn.className = 'guide-back-btn';
+    backBtn.innerHTML = '&#8592; Back';
+    backBtn.title = 'Return to mind map';
+    var headerLeft = document.querySelector('.header-left');
+    if (headerLeft) {
+      headerLeft.insertBefore(backBtn, headerLeft.firstChild);
+    }
+  }
+
   function slugify(text) {
     return text.toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
@@ -213,14 +246,47 @@
     toggle.addEventListener('click', function () {
       if (window.innerWidth <= 768) {
         sidebar.classList.toggle('mobile-open');
+        updateOverlay();
       } else {
         sidebar.classList.toggle('collapsed');
       }
     });
+
+    // Mobile TOC button in header — always visible so users can reopen the sidebar
+    var tocBtn = document.createElement('button');
+    tocBtn.className = 'mobile-toc-btn';
+    tocBtn.innerHTML = '&#9776;';
+    tocBtn.title = 'Show table of contents';
+    tocBtn.addEventListener('click', function () {
+      sidebar.classList.add('mobile-open');
+      updateOverlay();
+    });
+    var headerRight = document.querySelector('.header-right');
+    if (headerRight) {
+      headerRight.insertBefore(tocBtn, headerRight.firstChild);
+    }
+
+    // Overlay to close sidebar on mobile when tapping outside
+    var overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    overlay.addEventListener('click', function () {
+      sidebar.classList.remove('mobile-open');
+      updateOverlay();
+    });
+    document.body.appendChild(overlay);
+
+    function updateOverlay() {
+      if (sidebar.classList.contains('mobile-open')) {
+        overlay.classList.add('active');
+      } else {
+        overlay.classList.remove('active');
+      }
+    }
   }
 
   // Init
   document.addEventListener('DOMContentLoaded', function () {
+    setupBackNavigation();
     setupSidebar();
     loadGuide();
   });

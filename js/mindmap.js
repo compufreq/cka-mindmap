@@ -35,10 +35,16 @@
     }
 
     breadcrumbEl.innerHTML = '';
+    // On deep paths (3+ items), mark early items so mobile can hide them
+    var hideOnMobile = crumbs.length > 2;
+
     crumbs.forEach(function (crumb, i) {
+      // Items before the last 2 get hidden on mobile
+      var isEarlyItem = hideOnMobile && i < crumbs.length - 2;
+
       if (i > 0) {
         var sep = document.createElement('span');
-        sep.className = 'breadcrumb-sep';
+        sep.className = 'breadcrumb-sep' + (isEarlyItem ? ' breadcrumb-early' : '');
         sep.textContent = '\u203A';
         breadcrumbEl.appendChild(sep);
       }
@@ -46,7 +52,7 @@
       if (i < crumbs.length - 1) {
         var link = document.createElement('a');
         link.href = '#' + crumb.key;
-        link.className = 'breadcrumb-link';
+        link.className = 'breadcrumb-link' + (isEarlyItem ? ' breadcrumb-early' : '');
         link.textContent = crumb.title;
         breadcrumbEl.appendChild(link);
       } else {
@@ -122,9 +128,15 @@
     links.forEach(function (g) {
       var li = document.createElement('li');
       var a = document.createElement('a');
-      a.href = g.url;
+      // Append from= parameter so guide page can link back
+      var guideUrl = g.url;
+      var separator = guideUrl.indexOf('?') !== -1 ? '&' : '?';
+      var hashParts = guideUrl.split('#');
+      guideUrl = hashParts[0] + separator + 'from=' + encodeURIComponent(pageKey);
+      if (hashParts[1]) guideUrl += '#' + hashParts[1];
+      a.href = guideUrl;
       a.target = '_blank';
-      a.rel = 'noopener noreferrer';
+      a.rel = 'noopener';
       a.textContent = g.title;
       a.className = 'detail-ref-link';
       a.style.color = '#FF9800';
@@ -152,7 +164,7 @@
 
     var k8sLi = document.createElement('li');
     var k8sA = document.createElement('a');
-    k8sA.href = 'pages/guide.html?id=kubernetes';
+    k8sA.href = 'pages/guide.html?id=kubernetes&from=' + encodeURIComponent(pageKey);
     k8sA.target = '_blank';
     k8sA.textContent = 'Kubernetes Complete CKA Technical Reference';
     k8sA.className = 'detail-ref-link';
@@ -165,7 +177,7 @@
 
     var linLi = document.createElement('li');
     var linA = document.createElement('a');
-    linA.href = 'pages/guide.html?id=linux-networking';
+    linA.href = 'pages/guide.html?id=linux-networking&from=' + encodeURIComponent(pageKey);
     linA.target = '_blank';
     linA.textContent = 'Complete Linux Network Commands Reference';
     linA.className = 'detail-ref-link';
@@ -635,9 +647,15 @@
         li.style.cssText = 'padding-left: 24px;';
         li.innerHTML = '<span style="position:absolute;left:0;font-size:12px;">&#128218;</span>';
         var a = document.createElement('a');
-        a.href = g.url;
+        // Append from= parameter so guide page can link back to current mind map page
+        var guideUrl = g.url;
+        var separator = guideUrl.indexOf('?') !== -1 ? '&' : '?';
+        var hashParts = guideUrl.split('#');
+        guideUrl = hashParts[0] + separator + 'from=' + encodeURIComponent(currentPageKey);
+        if (hashParts[1]) guideUrl += '#' + hashParts[1];
+        a.href = guideUrl;
         a.target = '_blank';
-        a.rel = 'noopener noreferrer';
+        a.rel = 'noopener';
         a.textContent = g.title;
         a.className = 'detail-ref-link';
         a.style.color = '#FF9800';

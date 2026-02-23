@@ -87,13 +87,19 @@ body {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .breadcrumb-link {
   color: var(--k8s-blue);
   text-decoration: none;
   transition: color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
 }
 
 .breadcrumb-link:hover {
@@ -105,10 +111,14 @@ body {
   color: var(--text-muted);
   font-size: 16px;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .breadcrumb-current {
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* === Study Guides Menu === */
@@ -116,6 +126,8 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .guides-dropdown {
@@ -569,6 +581,19 @@ body {
     flex-direction: column;
     gap: 8px;
     padding: 10px 16px;
+    align-items: stretch;
+  }
+
+  .header-right {
+    justify-content: space-between;
+  }
+
+  .breadcrumb-link {
+    max-width: 200px;
+  }
+
+  .breadcrumb-early {
+    display: none;
   }
 
   .detail-panel {
