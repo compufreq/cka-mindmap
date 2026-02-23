@@ -564,6 +564,10 @@
     panel.className = 'detail-panel';
     panel.style.borderTopColor = color;
 
+    // Fixed top section (non-scrollable): header + description
+    var panelTop = document.createElement('div');
+    panelTop.className = 'detail-panel-top';
+
     // Header
     var header = document.createElement('div');
     header.className = 'detail-header';
@@ -578,14 +582,20 @@
     closeBtn.textContent = '\u2715';
     closeBtn.addEventListener('click', closeDetailPanel);
     header.appendChild(closeBtn);
-    panel.appendChild(header);
+    panelTop.appendChild(header);
 
     if (node.description) {
       var desc = document.createElement('p');
       desc.className = 'detail-description';
       desc.textContent = node.description;
-      panel.appendChild(desc);
+      panelTop.appendChild(desc);
     }
+
+    panel.appendChild(panelTop);
+
+    // Scrollable body section: key concepts, commands, guides, references
+    var panelBody = document.createElement('div');
+    panelBody.className = 'detail-panel-body';
 
     // Key Points
     if (node.keyPoints && node.keyPoints.length) {
@@ -602,7 +612,7 @@
         ul.appendChild(li);
       });
       kpSection.appendChild(ul);
-      panel.appendChild(kpSection);
+      panelBody.appendChild(kpSection);
     }
 
     // Commands
@@ -620,7 +630,7 @@
         pre.appendChild(code);
         cmdSection.appendChild(pre);
       });
-      panel.appendChild(cmdSection);
+      panelBody.appendChild(cmdSection);
     }
 
     // Study Guides (from node or from GUIDE_LINKS for current page)
@@ -663,7 +673,7 @@
         guideList.appendChild(li);
       });
       guideSection.appendChild(guideList);
-      panel.appendChild(guideSection);
+      panelBody.appendChild(guideSection);
     }
 
     // References
@@ -694,8 +704,10 @@
         refList.appendChild(li);
       });
       refSection.appendChild(refList);
-      panel.appendChild(refSection);
+      panelBody.appendChild(refSection);
     }
+
+    panel.appendChild(panelBody);
 
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
