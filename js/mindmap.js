@@ -101,6 +101,10 @@
     panel.className = 'detail-panel';
     panel.style.borderTopColor = '#FF9800';
 
+    // Fixed top section (non-scrollable)
+    var panelTop = document.createElement('div');
+    panelTop.className = 'detail-panel-top';
+
     var header = document.createElement('div');
     header.className = 'detail-header';
     var title = document.createElement('h2');
@@ -113,12 +117,18 @@
     closeBtn.textContent = '\u2715';
     closeBtn.addEventListener('click', closeDetailPanel);
     header.appendChild(closeBtn);
-    panel.appendChild(header);
+    panelTop.appendChild(header);
 
     var desc = document.createElement('p');
     desc.className = 'detail-description';
     desc.textContent = 'In-depth technical references related to this topic.';
-    panel.appendChild(desc);
+    panelTop.appendChild(desc);
+
+    panel.appendChild(panelTop);
+
+    // Scrollable body section
+    var panelBody = document.createElement('div');
+    panelBody.className = 'detail-panel-body';
 
     var section = document.createElement('div');
     section.className = 'detail-section';
@@ -148,7 +158,7 @@
       list.appendChild(li);
     });
     section.appendChild(list);
-    panel.appendChild(section);
+    panelBody.appendChild(section);
 
     // Add links to full guides
     var fullSection = document.createElement('div');
@@ -185,7 +195,9 @@
     fullList.appendChild(linLi);
 
     fullSection.appendChild(fullList);
-    panel.appendChild(fullSection);
+    panelBody.appendChild(fullSection);
+
+    panel.appendChild(panelBody);
 
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
