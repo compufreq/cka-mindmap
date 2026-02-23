@@ -135,8 +135,6 @@
       guideUrl = hashParts[0] + separator + 'from=' + encodeURIComponent(pageKey);
       if (hashParts[1]) guideUrl += '#' + hashParts[1];
       a.href = guideUrl;
-      a.target = '_blank';
-      a.rel = 'noopener';
       a.textContent = g.title;
       a.className = 'detail-ref-link';
       a.style.color = '#FF9800';
@@ -165,7 +163,6 @@
     var k8sLi = document.createElement('li');
     var k8sA = document.createElement('a');
     k8sA.href = 'pages/guide.html?id=kubernetes&from=' + encodeURIComponent(pageKey);
-    k8sA.target = '_blank';
     k8sA.textContent = 'Kubernetes Complete CKA Technical Reference';
     k8sA.className = 'detail-ref-link';
     k8sLi.appendChild(k8sA);
@@ -178,7 +175,6 @@
     var linLi = document.createElement('li');
     var linA = document.createElement('a');
     linA.href = 'pages/guide.html?id=linux-networking&from=' + encodeURIComponent(pageKey);
-    linA.target = '_blank';
     linA.textContent = 'Complete Linux Network Commands Reference';
     linA.className = 'detail-ref-link';
     linLi.appendChild(linA);
@@ -654,8 +650,6 @@
         guideUrl = hashParts[0] + separator + 'from=' + encodeURIComponent(currentPageKey);
         if (hashParts[1]) guideUrl += '#' + hashParts[1];
         a.href = guideUrl;
-        a.target = '_blank';
-        a.rel = 'noopener';
         a.textContent = g.title;
         a.className = 'detail-ref-link';
         a.style.color = '#FF9800';
