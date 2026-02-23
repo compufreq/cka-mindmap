@@ -226,9 +226,15 @@ const MIND_MAP_DATA = {
           "Cannot grant access to cluster-scoped resources"
         ],
         commands: [
-          "kubectl create role pod-reader --verb=get,list,watch --resource=pods",
+          "kubectl create role pod-reader --verb=get,list,watch --resource=pods -n <namespace>",
           "kubectl get roles -n <namespace>",
-          "kubectl describe role <role-name> -n <namespace>"
+          "kubectl get roles -A",
+          "kubectl describe role <role-name> -n <namespace>",
+          "kubectl get role <role-name> -n <namespace> -o yaml",
+          "kubectl edit role <role-name> -n <namespace>",
+          "kubectl delete role <role-name> -n <namespace>",
+          "kubectl create role secret-admin --verb=get,list,create,delete --resource=secrets -n <namespace>",
+          "kubectl explain role.rules"
         ],
         references: [
           { title: "Using RBAC Authorization", url: "https://kubernetes.io/docs/reference/access-authn-authz/rbac/" },
@@ -247,7 +253,13 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl create clusterrole node-reader --verb=get,list,watch --resource=nodes",
           "kubectl get clusterroles",
-          "kubectl describe clusterrole <name>"
+          "kubectl describe clusterrole <name>",
+          "kubectl get clusterrole <name> -o yaml",
+          "kubectl edit clusterrole <name>",
+          "kubectl delete clusterrole <name>",
+          "kubectl create clusterrole pv-reader --verb=get,list,watch --resource=persistentvolumes",
+          "kubectl explain clusterrole.rules",
+          "kubectl get clusterroles --no-headers | wc -l"
         ],
         references: [
           { title: "Using RBAC Authorization", url: "https://kubernetes.io/docs/reference/access-authn-authz/rbac/" },
@@ -265,8 +277,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl create rolebinding pod-reader-binding --role=pod-reader --user=jane -n default",
+          "kubectl create rolebinding sa-binding --role=pod-reader --serviceaccount=default:my-sa -n <namespace>",
           "kubectl get rolebindings -n <namespace>",
-          "kubectl auth can-i list pods --as=jane -n default"
+          "kubectl get rolebindings -A",
+          "kubectl describe rolebinding <name> -n <namespace>",
+          "kubectl get rolebinding <name> -n <namespace> -o yaml",
+          "kubectl delete rolebinding <name> -n <namespace>",
+          "kubectl auth can-i list pods --as=jane -n default",
+          "kubectl create rolebinding admin-binding --clusterrole=admin --user=jane -n <namespace>"
         ],
         references: [
           { title: "RoleBinding and ClusterRoleBinding", url: "https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding" }
@@ -283,8 +301,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl create clusterrolebinding admin-binding --clusterrole=cluster-admin --user=admin",
+          "kubectl create clusterrolebinding sa-crb --clusterrole=view --serviceaccount=<namespace>:<sa-name>",
           "kubectl get clusterrolebindings",
-          "kubectl delete clusterrolebinding <name>"
+          "kubectl describe clusterrolebinding <name>",
+          "kubectl get clusterrolebinding <name> -o yaml",
+          "kubectl delete clusterrolebinding <name>",
+          "kubectl auth can-i list nodes --as=admin",
+          "kubectl get clusterrolebindings -o jsonpath='{range .items[?(@.roleRef.name==\"cluster-admin\")]}{.metadata.name}{\"\\n\"}{end}'"
         ],
         references: [
           { title: "RoleBinding and ClusterRoleBinding", url: "https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding" }
@@ -302,8 +325,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl create serviceaccount my-sa -n default",
-          "kubectl get serviceaccounts",
-          "kubectl set serviceaccount deployment/my-app my-sa"
+          "kubectl get serviceaccounts -n <namespace>",
+          "kubectl get serviceaccounts -A",
+          "kubectl describe serviceaccount my-sa -n <namespace>",
+          "kubectl get serviceaccount my-sa -o yaml",
+          "kubectl delete serviceaccount my-sa -n <namespace>",
+          "kubectl set serviceaccount deployment/my-app my-sa",
+          "kubectl create token my-sa -n <namespace>",
+          "kubectl auth can-i list pods --as=system:serviceaccount:<namespace>:my-sa"
         ],
         references: [
           { title: "Service Accounts", url: "https://kubernetes.io/docs/concepts/security/service-accounts/" },
@@ -322,8 +351,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl auth can-i create pods --as=system:serviceaccount:default:my-sa",
+          "kubectl auth can-i get pods --as=jane -n <namespace>",
           "kubectl auth can-i '*' '*' --all-namespaces",
-          "kubectl auth whoami"
+          "kubectl auth can-i list deployments --as=system:serviceaccount:<namespace>:<sa-name>",
+          "kubectl auth whoami",
+          "kubectl auth can-i --list --as=jane -n <namespace>",
+          "kubectl auth can-i delete nodes --as=admin",
+          "kubectl get pods --as=jane -n <namespace>"
         ],
         references: [
           { title: "Checking API Access", url: "https://kubernetes.io/docs/reference/access-authn-authz/authorization/#checking-api-access" },
@@ -353,7 +387,12 @@ const MIND_MAP_DATA = {
         commands: [
           "kubeadm init --pod-network-cidr=10.244.0.0/16",
           "kubeadm init --config kubeadm-config.yaml",
-          "kubeadm init --control-plane-endpoint=<load-balancer>:6443 --upload-certs"
+          "kubeadm init --control-plane-endpoint=<load-balancer>:6443 --upload-certs",
+          "kubeadm init --apiserver-advertise-address=<ip> --pod-network-cidr=10.244.0.0/16",
+          "kubeadm init --dry-run",
+          "kubeadm init phase preflight",
+          "mkdir -p $HOME/.kube && cp -i /etc/kubernetes/admin.conf $HOME/.kube/config && chown $(id -u):$(id -g) $HOME/.kube/config",
+          "kubeadm init --skip-phases=addon/kube-proxy"
         ],
         references: [
           { title: "kubeadm init", url: "https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-init/" },
@@ -371,8 +410,12 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubeadm join <api-server>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>",
-          "kubeadm join --control-plane --certificate-key <key>",
-          "kubeadm token create --print-join-command"
+          "kubeadm join <api-server>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash> --control-plane --certificate-key <key>",
+          "kubeadm token create --print-join-command",
+          "kubeadm join --config join-config.yaml",
+          "kubeadm join --dry-run <api-server>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>",
+          "kubeadm join phase preflight <api-server>:6443 --token <token>",
+          "kubectl get nodes (verify node joined)"
         ],
         references: [
           { title: "kubeadm join", url: "https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-join/" }
@@ -390,7 +433,13 @@ const MIND_MAP_DATA = {
         commands: [
           "kubeadm upgrade plan",
           "kubeadm upgrade apply v1.34.0",
-          "kubeadm upgrade node (on worker nodes)"
+          "kubeadm upgrade apply v1.34.0 --dry-run",
+          "kubeadm upgrade node",
+          "kubeadm upgrade diff v1.34.0",
+          "kubectl drain <node> --ignore-daemonsets --delete-emptydir-data",
+          "apt-get update && apt-get install -y kubelet=1.34.0-* kubectl=1.34.0-*",
+          "systemctl daemon-reload && systemctl restart kubelet",
+          "kubectl uncordon <node>"
         ],
         references: [
           { title: "kubeadm upgrade", url: "https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-upgrade/" },
@@ -408,8 +457,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubeadm config print init-defaults",
+          "kubeadm config print join-defaults",
           "kubeadm config images list",
-          "kubeadm config images pull"
+          "kubeadm config images pull",
+          "kubeadm config images list --kubernetes-version=v1.34.0",
+          "kubeadm config validate --config kubeadm-config.yaml",
+          "kubeadm config migrate --old-config old-config.yaml --new-config new-config.yaml",
+          "kubectl get configmap kubeadm-config -n kube-system -o yaml"
         ],
         references: [
           { title: "kubeadm config", url: "https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-config/" }
@@ -427,7 +481,12 @@ const MIND_MAP_DATA = {
         commands: [
           "kubeadm token list",
           "kubeadm token create",
-          "kubeadm token create --ttl 2h --print-join-command"
+          "kubeadm token create --ttl 2h --print-join-command",
+          "kubeadm token create --ttl 0 (never expires)",
+          "kubeadm token delete <token>",
+          "kubeadm token generate",
+          "openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'",
+          "kubectl get secrets -n kube-system | grep bootstrap-token"
         ],
         references: [
           { title: "kubeadm token", url: "https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-token/" }
@@ -444,7 +503,12 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubeadm reset",
-          "kubeadm reset --force"
+          "kubeadm reset --force",
+          "kubeadm reset --cert-dir /etc/kubernetes/pki",
+          "iptables -F && iptables -t nat -F && iptables -t mangle -F && iptables -X",
+          "ipvsadm --clear",
+          "rm -rf $HOME/.kube/config",
+          "rm -rf /etc/cni/net.d"
         ],
         references: [
           { title: "kubeadm reset", url: "https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-reset/" }
@@ -470,7 +534,12 @@ const MIND_MAP_DATA = {
           "Risk: losing a node loses both a control plane and an etcd member"
         ],
         commands: [
-          "kubeadm init --control-plane-endpoint=<lb>:6443 --upload-certs"
+          "kubeadm init --control-plane-endpoint=<lb>:6443 --upload-certs",
+          "kubeadm join <lb>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash> --control-plane --certificate-key <key>",
+          "kubectl get nodes -o wide",
+          "kubectl get pods -n kube-system -l component=etcd",
+          "ETCDCTL_API=3 etcdctl member list --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
+          "kubectl get endpoints -n default kubernetes"
         ],
         references: [
           { title: "HA Topology Options", url: "https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ha-topology/" },
@@ -487,7 +556,12 @@ const MIND_MAP_DATA = {
           "Better for large production environments"
         ],
         commands: [
-          "kubeadm init --config=kubeadm-config.yaml (with external etcd endpoints)"
+          "kubeadm init --config=kubeadm-config.yaml (with external etcd endpoints)",
+          "ETCDCTL_API=3 etcdctl endpoint health --endpoints=https://<etcd1>:2379,https://<etcd2>:2379,https://<etcd3>:2379 --cacert=/etc/etcd/ca.crt --cert=/etc/etcd/server.crt --key=/etc/etcd/server.key",
+          "ETCDCTL_API=3 etcdctl endpoint status --endpoints=https://<etcd1>:2379,https://<etcd2>:2379 --cacert=/etc/etcd/ca.crt --cert=/etc/etcd/server.crt --key=/etc/etcd/server.key -w table",
+          "ETCDCTL_API=3 etcdctl member list --endpoints=https://<etcd1>:2379 --cacert=/etc/etcd/ca.crt --cert=/etc/etcd/server.crt --key=/etc/etcd/server.key",
+          "systemctl status etcd",
+          "journalctl -u etcd -f"
         ],
         references: [
           { title: "HA Topology Options", url: "https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ha-topology/" },
@@ -504,7 +578,12 @@ const MIND_MAP_DATA = {
           "The --control-plane-endpoint must point to the LB"
         ],
         commands: [
-          "kubeadm init --control-plane-endpoint=<load-balancer-dns>:6443"
+          "kubeadm init --control-plane-endpoint=<load-balancer-dns>:6443",
+          "curl -k https://<load-balancer-dns>:6443/healthz",
+          "kubectl get endpoints kubernetes",
+          "kubectl cluster-info",
+          "kubectl get nodes -o wide",
+          "nc -zv <load-balancer-dns> 6443"
         ],
         references: [
           { title: "Creating HA Clusters", url: "https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/" }
@@ -523,7 +602,12 @@ const MIND_MAP_DATA = {
         commands: [
           "ETCDCTL_API=3 etcdctl snapshot save /tmp/backup.db --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
           "ETCDCTL_API=3 etcdctl snapshot restore /tmp/backup.db --data-dir=/var/lib/etcd-backup",
-          "ETCDCTL_API=3 etcdctl snapshot status /tmp/backup.db -w table"
+          "ETCDCTL_API=3 etcdctl snapshot status /tmp/backup.db -w table",
+          "ETCDCTL_API=3 etcdctl endpoint health --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
+          "ETCDCTL_API=3 etcdctl member list --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
+          "ETCDCTL_API=3 etcdctl snapshot restore /tmp/backup.db --data-dir=/var/lib/etcd-backup --name=<node> --initial-cluster=<node>=https://<ip>:2380 --initial-advertise-peer-urls=https://<ip>:2380",
+          "cat /etc/kubernetes/manifests/etcd.yaml | grep data-dir",
+          "crictl ps | grep etcd"
         ],
         references: [
           { title: "Operating etcd Clusters", url: "https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/" },
@@ -552,8 +636,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "ls /etc/cni/net.d/",
-          "kubectl get pods -n kube-system (check CNI pods)",
-          "kubectl apply -f <cni-plugin-manifest>.yaml"
+          "cat /etc/cni/net.d/*.conflist",
+          "kubectl get pods -n kube-system -l k8s-app=calico-node",
+          "kubectl get pods -n kube-system | grep -E 'calico|flannel|cilium|weave'",
+          "kubectl apply -f <cni-plugin-manifest>.yaml",
+          "kubectl get nodes -o wide (check INTERNAL-IP and STATUS)",
+          "ip route (check pod CIDR routes on node)",
+          "kubectl logs -n kube-system <cni-pod>",
+          "/opt/cni/bin/ (list installed CNI binaries)"
         ],
         references: [
           { title: "Network Plugins", url: "https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/" },
@@ -572,7 +662,13 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl get csidrivers",
           "kubectl get csinodes",
-          "kubectl describe csidrivers <driver-name>"
+          "kubectl describe csidrivers <driver-name>",
+          "kubectl get csidriver <name> -o yaml",
+          "kubectl describe csinode <node-name>",
+          "kubectl get storageclasses",
+          "kubectl get volumeattachments",
+          "kubectl describe volumeattachment <name>",
+          "kubectl get pods -n kube-system | grep csi"
         ],
         references: [
           { title: "CSI Volumes", url: "https://kubernetes.io/docs/concepts/storage/volumes/#csi" },
@@ -590,9 +686,17 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "crictl ps",
+          "crictl ps -a (include stopped containers)",
           "crictl images",
           "crictl info",
-          "systemctl status containerd"
+          "crictl logs <container-id>",
+          "crictl inspect <container-id>",
+          "crictl pods",
+          "crictl rmi <image-id>",
+          "systemctl status containerd",
+          "systemctl restart containerd",
+          "cat /etc/containerd/config.toml",
+          "cat /var/lib/kubelet/config.yaml | grep containerRuntimeEndpoint"
         ],
         references: [
           { title: "Container Runtime Interface", url: "https://kubernetes.io/docs/concepts/architecture/cri/" },
@@ -622,8 +726,13 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl get crds",
           "kubectl describe crd <crd-name>",
+          "kubectl get crd <crd-name> -o yaml",
           "kubectl get <custom-resource> -n <namespace>",
-          "kubectl apply -f my-crd.yaml"
+          "kubectl apply -f my-crd.yaml",
+          "kubectl delete crd <crd-name>",
+          "kubectl explain <custom-resource>",
+          "kubectl get crds | grep <group-name>",
+          "kubectl api-resources | grep <custom-resource>"
         ],
         references: [
           { title: "Custom Resources", url: "https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/" },
@@ -641,7 +750,12 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get pods -n <operator-namespace>",
-          "kubectl logs <operator-pod>"
+          "kubectl logs <operator-pod> -n <operator-namespace>",
+          "kubectl logs <operator-pod> -n <operator-namespace> -f",
+          "kubectl describe pod <operator-pod> -n <operator-namespace>",
+          "kubectl get deployments -n <operator-namespace>",
+          "kubectl get crds | grep <operator-domain>",
+          "kubectl get events -n <operator-namespace> --sort-by='.lastTimestamp'"
         ],
         references: [
           { title: "Operator Pattern", url: "https://kubernetes.io/docs/concepts/extend-kubernetes/operator/" }
@@ -660,7 +774,12 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl apply -f my-custom-resource.yaml",
           "kubectl get <resource-type>",
-          "kubectl delete <resource-type> <name>"
+          "kubectl get <resource-type> -n <namespace> -o yaml",
+          "kubectl describe <resource-type> <name>",
+          "kubectl edit <resource-type> <name>",
+          "kubectl delete <resource-type> <name>",
+          "kubectl patch <resource-type> <name> --type merge -p '{\"spec\":{\"key\":\"value\"}}'",
+          "kubectl api-resources --api-group=<group-name>"
         ],
         references: [
           { title: "Custom Resources", url: "https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/" },
@@ -690,9 +809,19 @@ const MIND_MAP_DATA = {
         commands: [
           "helm repo add <name> <url>",
           "helm install <release> <chart>",
+          "helm install <release> <chart> --set key=value",
+          "helm install <release> <chart> -f custom-values.yaml",
+          "helm install <release> <chart> --namespace <namespace> --create-namespace",
           "helm upgrade <release> <chart>",
-          "helm list",
-          "helm rollback <release> <revision>"
+          "helm upgrade <release> <chart> --install",
+          "helm list -A",
+          "helm rollback <release> <revision>",
+          "helm uninstall <release>",
+          "helm history <release>",
+          "helm get values <release>",
+          "helm get manifest <release>",
+          "helm show values <chart>",
+          "helm template <release> <chart>"
         ],
         references: [
           { title: "Helm (Official Docs)", url: "https://helm.sh/docs/" },
@@ -711,8 +840,14 @@ const MIND_MAP_DATA = {
         commands: [
           "helm repo add bitnami https://charts.bitnami.com/bitnami",
           "helm repo update",
+          "helm repo list",
+          "helm repo remove <name>",
           "helm search repo <keyword>",
-          "helm search hub <keyword>"
+          "helm search repo <keyword> --versions",
+          "helm search hub <keyword>",
+          "helm pull <chart> --untar",
+          "helm show chart <chart>",
+          "helm show readme <chart>"
         ],
         references: [
           { title: "Helm Repositories", url: "https://helm.sh/docs/topics/chart_repository/" }
@@ -730,7 +865,12 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl apply -k <directory>",
           "kubectl kustomize <directory>",
-          "kustomize build <directory>"
+          "kubectl kustomize <directory> | kubectl apply -f -",
+          "kubectl diff -k <directory>",
+          "kubectl delete -k <directory>",
+          "kubectl get -k <directory>",
+          "kustomize build <directory>",
+          "kustomize build <directory> | kubectl apply -f -"
         ],
         references: [
           { title: "Kustomize", url: "https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/" }
@@ -747,7 +887,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl apply -k overlays/production/",
-          "kustomize build overlays/staging/"
+          "kubectl kustomize overlays/production/",
+          "kubectl diff -k overlays/production/",
+          "kustomize build overlays/staging/",
+          "kustomize build overlays/staging/ | kubectl diff -f -",
+          "kubectl apply -k overlays/staging/",
+          "kubectl delete -k overlays/production/",
+          "kustomize build overlays/production/ | kubectl apply --dry-run=client -f -"
         ],
         references: [
           { title: "Kustomize", url: "https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/" }
@@ -777,9 +923,14 @@ const MIND_MAP_DATA = {
           "apt-get update && apt-get install -y kubeadm=1.34.0-*",
           "kubeadm upgrade plan",
           "kubeadm upgrade apply v1.34.0",
+          "kubeadm upgrade apply v1.34.0 --dry-run",
           "kubectl drain <node> --ignore-daemonsets --delete-emptydir-data",
           "apt-get install -y kubelet=1.34.0-* kubectl=1.34.0-*",
-          "kubectl uncordon <node>"
+          "systemctl daemon-reload && systemctl restart kubelet",
+          "kubectl uncordon <node>",
+          "kubeadm upgrade node (on worker nodes after kubeadm upgrade)",
+          "kubectl get nodes (verify all nodes are Ready with new version)",
+          "kubectl version --short"
         ],
         references: [
           { title: "Upgrading kubeadm Clusters", url: "https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/" },
@@ -798,9 +949,15 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl drain <node> --ignore-daemonsets",
+          "kubectl drain <node> --ignore-daemonsets --delete-emptydir-data --force",
           "kubectl cordon <node>",
           "kubectl uncordon <node>",
-          "kubectl delete node <node>"
+          "kubectl delete node <node>",
+          "kubectl get nodes -o wide",
+          "kubectl describe node <node>",
+          "kubectl get pods -A --field-selector spec.nodeName=<node>",
+          "kubectl label node <node> role=worker",
+          "kubectl annotate node <node> description='worker-node-01'"
         ],
         references: [
           { title: "Safely Drain a Node", url: "https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/" },
@@ -819,7 +976,11 @@ const MIND_MAP_DATA = {
         commands: [
           "ETCDCTL_API=3 etcdctl snapshot save /backup/snap.db --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
           "ETCDCTL_API=3 etcdctl snapshot restore /backup/snap.db --data-dir=/var/lib/etcd-restored",
-          "ETCDCTL_API=3 etcdctl snapshot status /backup/snap.db -w table"
+          "ETCDCTL_API=3 etcdctl snapshot status /backup/snap.db -w table",
+          "ETCDCTL_API=3 etcdctl endpoint health --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
+          "ETCDCTL_API=3 etcdctl member list --write-out=table --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
+          "cat /etc/kubernetes/manifests/etcd.yaml",
+          "ls /var/lib/etcd/member/"
         ],
         references: [
           { title: "Operating etcd Clusters", url: "https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/" }
@@ -838,7 +999,13 @@ const MIND_MAP_DATA = {
         commands: [
           "kubeadm certs check-expiration",
           "kubeadm certs renew all",
-          "openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -dates"
+          "kubeadm certs renew apiserver",
+          "openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -dates",
+          "openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -text | grep -A2 Validity",
+          "ls /etc/kubernetes/pki/",
+          "kubeadm certs certificate-key",
+          "kubectl get csr",
+          "kubectl certificate approve <csr-name>"
         ],
         references: [
           { title: "PKI Certificates and Requirements", url: "https://kubernetes.io/docs/setup/best-practices/certificates/" },
@@ -868,8 +1035,15 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl set image deployment/myapp myapp=myapp:v2",
+          "kubectl set image deployment/myapp myapp=myapp:v2 --record",
           "kubectl rollout status deployment/myapp",
-          "kubectl rollout history deployment/myapp"
+          "kubectl rollout history deployment/myapp",
+          "kubectl rollout pause deployment/myapp",
+          "kubectl rollout resume deployment/myapp",
+          "kubectl get rs -l app=myapp (see old and new ReplicaSets)",
+          "kubectl describe deployment myapp (check RollingUpdateStrategy)",
+          "kubectl patch deployment myapp -p '{\"spec\":{\"strategy\":{\"rollingUpdate\":{\"maxSurge\":1,\"maxUnavailable\":0}}}}'",
+          "kubectl explain deployment.spec.strategy.rollingUpdate"
         ],
         references: [
           { title: "Performing a Rolling Update", url: "https://kubernetes.io/docs/tutorials/kubernetes-basics/update/update-intro/" },
@@ -888,7 +1062,12 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl rollout undo deployment/myapp",
           "kubectl rollout undo deployment/myapp --to-revision=2",
-          "kubectl rollout history deployment/myapp --revision=3"
+          "kubectl rollout history deployment/myapp",
+          "kubectl rollout history deployment/myapp --revision=3",
+          "kubectl get rs -l app=myapp",
+          "kubectl describe deployment myapp (check revision annotations)",
+          "kubectl patch deployment myapp -p '{\"spec\":{\"revisionHistoryLimit\":10}}'",
+          "kubectl rollout status deployment/myapp"
         ],
         references: [
           { title: "Rolling Back a Deployment", url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment" }
@@ -905,8 +1084,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl create deployment myapp --image=myapp:v1 --replicas=3",
+          "kubectl create deployment myapp --image=myapp:v1 --dry-run=client -o yaml > deploy.yaml",
           "kubectl scale deployment/myapp --replicas=5",
-          "kubectl edit deployment/myapp"
+          "kubectl edit deployment/myapp",
+          "kubectl patch deployment myapp -p '{\"spec\":{\"strategy\":{\"type\":\"Recreate\"}}}'",
+          "kubectl get deployment myapp -o jsonpath='{.spec.strategy}'",
+          "kubectl explain deployment.spec.strategy",
+          "kubectl get pods -l app=myapp -w (watch pods during rollout)"
         ],
         references: [
           { title: "Deployment Strategy", url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy" }
@@ -924,8 +1108,15 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get deployment myapp -o yaml",
+          "kubectl get deployment myapp -o wide",
           "kubectl describe deployment myapp",
-          "kubectl apply -f deployment.yaml"
+          "kubectl apply -f deployment.yaml",
+          "kubectl explain deployment.spec",
+          "kubectl explain deployment.spec.template.spec.containers",
+          "kubectl patch deployment myapp -p '{\"spec\":{\"replicas\":5}}'",
+          "kubectl get deployment myapp -o jsonpath='{.spec.selector.matchLabels}'",
+          "kubectl label deployment myapp env=prod",
+          "kubectl delete deployment myapp"
         ],
         references: [
           { title: "Deployments", url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" },
@@ -953,10 +1144,16 @@ const MIND_MAP_DATA = {
           "Immutable ConfigMaps can be set with immutable: true"
         ],
         commands: [
-          "kubectl create configmap my-config --from-literal=key1=val1",
+          "kubectl create configmap my-config --from-literal=key1=val1 --from-literal=key2=val2",
           "kubectl create configmap my-config --from-file=config.properties",
-          "kubectl get configmaps",
-          "kubectl describe configmap my-config"
+          "kubectl create configmap my-config --from-file=<key>=<file-path>",
+          "kubectl create configmap my-config --from-env-file=app.env",
+          "kubectl get configmaps -n <namespace>",
+          "kubectl get configmap my-config -o yaml",
+          "kubectl describe configmap my-config",
+          "kubectl edit configmap my-config",
+          "kubectl delete configmap my-config",
+          "kubectl create configmap my-config --dry-run=client -o yaml > configmap.yaml"
         ],
         references: [
           { title: "ConfigMaps", url: "https://kubernetes.io/docs/concepts/configuration/configmap/" },
@@ -975,9 +1172,16 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl create secret generic my-secret --from-literal=password=pass123",
+          "kubectl create secret generic my-secret --from-file=ssh-key=~/.ssh/id_rsa",
           "kubectl create secret tls my-tls --cert=cert.pem --key=key.pem",
-          "kubectl get secrets",
-          "kubectl get secret my-secret -o jsonpath='{.data.password}' | base64 -d"
+          "kubectl create secret docker-registry my-reg --docker-server=<registry> --docker-username=<user> --docker-password=<pass>",
+          "kubectl get secrets -n <namespace>",
+          "kubectl get secret my-secret -o yaml",
+          "kubectl describe secret my-secret",
+          "kubectl get secret my-secret -o jsonpath='{.data.password}' | base64 -d",
+          "kubectl edit secret my-secret",
+          "kubectl delete secret my-secret",
+          "kubectl create secret generic my-secret --dry-run=client -o yaml > secret.yaml"
         ],
         references: [
           { title: "Secrets", url: "https://kubernetes.io/docs/concepts/configuration/secret/" },
@@ -994,7 +1198,13 @@ const MIND_MAP_DATA = {
           "Updates propagate automatically (not with subPath)"
         ],
         commands: [
-          "# In pod spec:\n# volumes:\n#   - name: config-vol\n#     configMap:\n#       name: my-config\n# containers:\n#   - volumeMounts:\n#     - name: config-vol\n#       mountPath: /etc/config"
+          "# In pod spec:\n# volumes:\n#   - name: config-vol\n#     configMap:\n#       name: my-config\n# containers:\n#   - volumeMounts:\n#     - name: config-vol\n#       mountPath: /etc/config",
+          "kubectl exec <pod> -- ls /etc/config",
+          "kubectl exec <pod> -- cat /etc/config/<key>",
+          "kubectl get pod <pod> -o jsonpath='{.spec.volumes}'",
+          "kubectl get pod <pod> -o jsonpath='{.spec.containers[*].volumeMounts}'",
+          "kubectl explain pod.spec.volumes.configMap",
+          "kubectl explain pod.spec.volumes.secret"
         ],
         references: [
           { title: "Using ConfigMaps as Files", url: "https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/#add-configmap-data-to-a-volume" },
@@ -1011,7 +1221,15 @@ const MIND_MAP_DATA = {
           "Env vars are NOT updated if ConfigMap/Secret changes"
         ],
         commands: [
-          "# In pod spec:\n# envFrom:\n#   - configMapRef:\n#       name: my-config\n# env:\n#   - name: MY_VAR\n#     valueFrom:\n#       secretKeyRef:\n#         name: my-secret\n#         key: password"
+          "# In pod spec:\n# envFrom:\n#   - configMapRef:\n#       name: my-config\n# env:\n#   - name: MY_VAR\n#     valueFrom:\n#       secretKeyRef:\n#         name: my-secret\n#         key: password",
+          "kubectl exec <pod> -- env (list all environment variables)",
+          "kubectl exec <pod> -- printenv MY_VAR",
+          "kubectl set env deployment/myapp MY_VAR=myvalue",
+          "kubectl set env deployment/myapp --from=configmap/my-config",
+          "kubectl set env deployment/myapp --from=secret/my-secret",
+          "kubectl set env deployment/myapp --list",
+          "kubectl explain pod.spec.containers.env",
+          "kubectl explain pod.spec.containers.envFrom"
         ],
         references: [
           { title: "Define Environment Variables", url: "https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/" },
@@ -1041,8 +1259,14 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl autoscale deployment myapp --min=2 --max=10 --cpu-percent=80",
           "kubectl get hpa",
+          "kubectl get hpa -A",
           "kubectl describe hpa myapp",
-          "kubectl top pods"
+          "kubectl get hpa myapp -o yaml",
+          "kubectl edit hpa myapp",
+          "kubectl delete hpa myapp",
+          "kubectl top pods",
+          "kubectl top pods -n <namespace> --sort-by=cpu",
+          "kubectl explain hpa.spec"
         ],
         references: [
           { title: "Horizontal Pod Autoscaling", url: "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/" },
@@ -1060,7 +1284,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get vpa",
-          "kubectl describe vpa <name>"
+          "kubectl get vpa -A",
+          "kubectl describe vpa <name>",
+          "kubectl get vpa <name> -o yaml",
+          "kubectl apply -f vpa.yaml",
+          "kubectl delete vpa <name>",
+          "kubectl get pods -n kube-system | grep vpa",
+          "kubectl top pods (compare actual vs recommended)"
         ],
         references: [
           { title: "Autoscaling Workloads", url: "https://kubernetes.io/docs/concepts/workloads/autoscaling/" }
@@ -1078,9 +1308,15 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl top nodes",
+          "kubectl top nodes --sort-by=cpu",
           "kubectl top pods",
+          "kubectl top pods -A --sort-by=memory",
           "kubectl top pods --containers",
-          "kubectl get deployment metrics-server -n kube-system"
+          "kubectl top pods -n <namespace> --sort-by=cpu",
+          "kubectl get deployment metrics-server -n kube-system",
+          "kubectl get pods -n kube-system | grep metrics-server",
+          "kubectl logs -n kube-system -l k8s-app=metrics-server",
+          "kubectl get apiservice v1beta1.metrics.k8s.io"
         ],
         references: [
           { title: "Resource Metrics Pipeline", url: "https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/" }
@@ -1107,8 +1343,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get replicasets",
+          "kubectl get rs -A",
+          "kubectl get rs -o wide",
           "kubectl describe rs <name>",
-          "kubectl scale rs <name> --replicas=3"
+          "kubectl get rs <name> -o yaml",
+          "kubectl scale rs <name> --replicas=3",
+          "kubectl delete rs <name>",
+          "kubectl get rs -l app=myapp",
+          "kubectl explain replicaset.spec"
         ],
         references: [
           { title: "ReplicaSet", url: "https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/" }
@@ -1125,8 +1367,15 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get daemonsets -A",
-          "kubectl describe daemonset <name>",
-          "kubectl rollout status daemonset/<name>"
+          "kubectl get ds -n <namespace>",
+          "kubectl describe daemonset <name> -n <namespace>",
+          "kubectl get ds <name> -o yaml",
+          "kubectl rollout status daemonset/<name>",
+          "kubectl rollout history daemonset/<name>",
+          "kubectl set image daemonset/<name> <container>=<image>:<tag>",
+          "kubectl delete daemonset <name>",
+          "kubectl explain daemonset.spec.updateStrategy",
+          "kubectl get pods -l app=<ds-label> -o wide"
         ],
         references: [
           { title: "DaemonSet", url: "https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/" }
@@ -1144,8 +1393,15 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get statefulsets",
+          "kubectl get sts -A",
+          "kubectl describe statefulset <name>",
+          "kubectl get sts <name> -o yaml",
           "kubectl scale statefulset <name> --replicas=5",
-          "kubectl rollout status statefulset/<name>"
+          "kubectl rollout status statefulset/<name>",
+          "kubectl rollout history statefulset/<name>",
+          "kubectl delete statefulset <name> --cascade=orphan",
+          "kubectl get pvc -l app=<sts-label> (check associated PVCs)",
+          "kubectl explain statefulset.spec.podManagementPolicy"
         ],
         references: [
           { title: "StatefulSets", url: "https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/" },
@@ -1164,9 +1420,16 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl create job my-job --image=busybox -- echo 'hello'",
+          "kubectl create job my-job --image=busybox --dry-run=client -o yaml -- echo 'hello'",
           "kubectl get jobs",
+          "kubectl get jobs -A",
           "kubectl describe job my-job",
-          "kubectl logs job/my-job"
+          "kubectl get job my-job -o yaml",
+          "kubectl logs job/my-job",
+          "kubectl delete job my-job",
+          "kubectl get pods --selector=job-name=my-job",
+          "kubectl explain job.spec.completions",
+          "kubectl explain job.spec.parallelism"
         ],
         references: [
           { title: "Jobs", url: "https://kubernetes.io/docs/concepts/workloads/controllers/job/" }
@@ -1183,8 +1446,15 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl create cronjob my-cron --image=busybox --schedule='*/5 * * * *' -- echo 'hello'",
+          "kubectl create cronjob my-cron --image=busybox --schedule='*/5 * * * *' --dry-run=client -o yaml -- echo 'hello'",
           "kubectl get cronjobs",
-          "kubectl describe cronjob my-cron"
+          "kubectl get cj -A",
+          "kubectl describe cronjob my-cron",
+          "kubectl get cronjob my-cron -o yaml",
+          "kubectl delete cronjob my-cron",
+          "kubectl create job --from=cronjob/my-cron manual-job-001",
+          "kubectl get jobs --selector=cronjob=my-cron",
+          "kubectl explain cronjob.spec.concurrencyPolicy"
         ],
         references: [
           { title: "CronJob", url: "https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/" },
@@ -1212,8 +1482,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl label nodes <node> disktype=ssd",
+          "kubectl label nodes <node> disktype- (remove label)",
           "kubectl get nodes --show-labels",
-          "# In pod spec:\n# nodeSelector:\n#   disktype: ssd"
+          "kubectl get nodes -l disktype=ssd",
+          "# In pod spec:\n# nodeSelector:\n#   disktype: ssd",
+          "kubectl run test-pod --image=nginx --overrides='{\"spec\":{\"nodeSelector\":{\"disktype\":\"ssd\"}}}' --dry-run=client -o yaml",
+          "kubectl describe pod <pod> | grep -A5 'Node-Selectors'",
+          "kubectl explain pod.spec.nodeSelector"
         ],
         references: [
           { title: "Assigning Pods to Nodes", url: "https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector" }
@@ -1231,7 +1506,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get nodes --show-labels",
-          "kubectl label nodes <node> zone=us-east-1a"
+          "kubectl label nodes <node> zone=us-east-1a",
+          "kubectl get nodes -l zone=us-east-1a",
+          "kubectl describe pod <pod> | grep -A10 'Node-Selectors\\|Tolerations\\|Affinity'",
+          "kubectl explain pod.spec.affinity.nodeAffinity",
+          "kubectl explain pod.spec.affinity.podAffinity",
+          "kubectl explain pod.spec.affinity.podAntiAffinity",
+          "kubectl get pods -o wide (check node placement)"
         ],
         references: [
           { title: "Affinity and Anti-affinity", url: "https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity" }
@@ -1248,8 +1529,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl taint nodes <node> key=value:NoSchedule",
-          "kubectl taint nodes <node> key=value:NoSchedule-",
-          "kubectl describe node <node> | grep -i taint"
+          "kubectl taint nodes <node> key=value:NoSchedule- (remove taint)",
+          "kubectl taint nodes <node> key=value:NoExecute",
+          "kubectl taint nodes <node> key=value:PreferNoSchedule",
+          "kubectl describe node <node> | grep -i taint",
+          "kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.spec.taints}{\"\\n\"}{end}'",
+          "kubectl explain pod.spec.tolerations",
+          "kubectl describe pod <pod> | grep -A5 Tolerations"
         ],
         references: [
           { title: "Taints and Tolerations", url: "https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/" }
@@ -1268,7 +1554,12 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl describe pod <pod> (check Resources section)",
           "kubectl top pods",
-          "kubectl describe node <node> (check Allocated resources)"
+          "kubectl top pods --sort-by=memory",
+          "kubectl describe node <node> (check Allocated resources)",
+          "kubectl get pod <pod> -o jsonpath='{.spec.containers[*].resources}'",
+          "kubectl set resources deployment/myapp --requests=cpu=100m,memory=128Mi --limits=cpu=500m,memory=256Mi",
+          "kubectl explain pod.spec.containers.resources",
+          "kubectl get pods -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.status.qosClass}{\"\\n\"}{end}'"
         ],
         references: [
           { title: "Managing Resources for Containers", url: "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/" },
@@ -1286,7 +1577,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get priorityclasses",
-          "kubectl describe priorityclass <name>"
+          "kubectl describe priorityclass <name>",
+          "kubectl get priorityclass <name> -o yaml",
+          "kubectl apply -f priorityclass.yaml",
+          "kubectl delete priorityclass <name>",
+          "kubectl explain priorityclass",
+          "kubectl get pods -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.spec.priorityClassName}{\"\\n\"}{end}'",
+          "kubectl describe pod <pod> | grep Priority"
         ],
         references: [
           { title: "Pod Priority and Preemption", url: "https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/" }
@@ -1315,7 +1612,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get pods -o wide (see pod IPs)",
-          "kubectl exec <pod> -- curl <other-pod-ip>"
+          "kubectl get pods -A -o wide",
+          "kubectl exec <pod> -- curl <other-pod-ip>:<port>",
+          "kubectl exec <pod> -- ping <other-pod-ip>",
+          "kubectl exec <pod> -- ip addr",
+          "kubectl exec <pod> -- ip route",
+          "kubectl get pods -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.status.podIP}{\"\\n\"}{end}'",
+          "kubectl cluster-info dump | grep -i cidr"
         ],
         references: [
           { title: "Cluster Networking", url: "https://kubernetes.io/docs/concepts/cluster-administration/networking/" },
@@ -1334,7 +1637,13 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl get pods -n kube-system | grep -E 'calico|flannel|cilium|weave'",
           "ls /etc/cni/net.d/",
-          "kubectl get nodes -o wide"
+          "cat /etc/cni/net.d/*.conflist",
+          "kubectl get nodes -o wide",
+          "kubectl logs -n kube-system <cni-pod>",
+          "kubectl describe pod -n kube-system <cni-pod>",
+          "ls /opt/cni/bin/",
+          "kubectl get ds -n kube-system (check CNI DaemonSets)",
+          "ip route (check pod network routes on node)"
         ],
         references: [
           { title: "Network Plugins", url: "https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/" },
@@ -1352,7 +1661,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl exec <pod> -- cat /etc/resolv.conf",
-          "kubectl exec <pod> -- nslookup kubernetes.default"
+          "kubectl exec <pod> -- nslookup kubernetes.default",
+          "kubectl exec <pod> -- nslookup <service>.<namespace>.svc.cluster.local",
+          "kubectl run dnstest --image=busybox:1.28 --rm -it --restart=Never -- nslookup kubernetes.default",
+          "kubectl get svc -n kube-system kube-dns",
+          "kubectl get pod <pod> -o jsonpath='{.spec.dnsPolicy}'",
+          "kubectl explain pod.spec.dnsPolicy",
+          "kubectl explain pod.spec.dnsConfig"
         ],
         references: [
           { title: "DNS for Services and Pods", url: "https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/" }
@@ -1380,7 +1695,14 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl expose deployment myapp --port=80 --target-port=8080",
           "kubectl get svc myapp",
-          "kubectl exec <pod> -- curl myapp.default.svc.cluster.local"
+          "kubectl get svc myapp -o yaml",
+          "kubectl describe svc myapp",
+          "kubectl get endpoints myapp",
+          "kubectl exec <pod> -- curl myapp.default.svc.cluster.local",
+          "kubectl exec <pod> -- curl <cluster-ip>:80",
+          "kubectl edit svc myapp",
+          "kubectl delete svc myapp",
+          "kubectl create service clusterip myapp --tcp=80:8080 --dry-run=client -o yaml"
         ],
         references: [
           { title: "Service - ClusterIP", url: "https://kubernetes.io/docs/concepts/services-networking/service/#type-clusterip" }
@@ -1396,9 +1718,15 @@ const MIND_MAP_DATA = {
           "Builds on ClusterIP"
         ],
         commands: [
-          "kubectl expose deployment myapp --type=NodePort --port=80",
-          "kubectl get svc myapp (see NodePort)",
-          "curl <node-ip>:<node-port>"
+          "kubectl expose deployment myapp --type=NodePort --port=80 --target-port=8080",
+          "kubectl get svc myapp",
+          "kubectl get svc myapp -o yaml",
+          "kubectl describe svc myapp",
+          "kubectl get svc myapp -o jsonpath='{.spec.ports[0].nodePort}'",
+          "curl <node-ip>:<node-port>",
+          "kubectl get endpoints myapp",
+          "kubectl create service nodeport myapp --tcp=80:8080 --node-port=30080 --dry-run=client -o yaml",
+          "kubectl get nodes -o wide (get node IPs for testing)"
         ],
         references: [
           { title: "Service - NodePort", url: "https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport" }
@@ -1414,8 +1742,14 @@ const MIND_MAP_DATA = {
           "Best for production external access in cloud"
         ],
         commands: [
-          "kubectl expose deployment myapp --type=LoadBalancer --port=80",
-          "kubectl get svc myapp (check EXTERNAL-IP)"
+          "kubectl expose deployment myapp --type=LoadBalancer --port=80 --target-port=8080",
+          "kubectl get svc myapp (check EXTERNAL-IP)",
+          "kubectl get svc myapp -o yaml",
+          "kubectl describe svc myapp",
+          "kubectl get svc myapp -o jsonpath='{.status.loadBalancer.ingress[0].ip}'",
+          "kubectl get endpoints myapp",
+          "curl <external-ip>:80",
+          "kubectl get events --field-selector involvedObject.name=myapp"
         ],
         references: [
           { title: "Service - LoadBalancer", url: "https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer" }
@@ -1431,7 +1765,12 @@ const MIND_MAP_DATA = {
           "Use for external service references"
         ],
         commands: [
-          "kubectl create service externalname my-svc --external-name=api.example.com"
+          "kubectl create service externalname my-svc --external-name=api.example.com",
+          "kubectl get svc my-svc",
+          "kubectl get svc my-svc -o yaml",
+          "kubectl describe svc my-svc",
+          "kubectl exec <pod> -- nslookup my-svc.default.svc.cluster.local",
+          "kubectl delete svc my-svc"
         ],
         references: [
           { title: "Service - ExternalName", url: "https://kubernetes.io/docs/concepts/services-networking/service/#externalname" }
@@ -1448,8 +1787,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get endpoints myapp",
+          "kubectl get endpoints -A",
+          "kubectl describe endpoints myapp",
+          "kubectl get endpoints myapp -o yaml",
           "kubectl get endpointslices",
-          "kubectl describe endpoints myapp"
+          "kubectl get endpointslices -l kubernetes.io/service-name=myapp",
+          "kubectl describe endpointslice <name>",
+          "kubectl get endpointslices -o yaml"
         ],
         references: [
           { title: "Endpoints", url: "https://kubernetes.io/docs/concepts/services-networking/service/#endpoints" },
@@ -1477,7 +1821,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get gateways",
-          "kubectl describe gateway <name>"
+          "kubectl get gateways -A",
+          "kubectl describe gateway <name>",
+          "kubectl get gateway <name> -o yaml",
+          "kubectl apply -f gateway.yaml",
+          "kubectl delete gateway <name>",
+          "kubectl get gatewayclasses",
+          "kubectl explain gateway.spec"
         ],
         references: [
           { title: "Gateway API", url: "https://kubernetes.io/docs/concepts/services-networking/gateway/" },
@@ -1495,7 +1845,12 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get httproutes",
-          "kubectl describe httproute <name>"
+          "kubectl get httproutes -A",
+          "kubectl describe httproute <name>",
+          "kubectl get httproute <name> -o yaml",
+          "kubectl apply -f httproute.yaml",
+          "kubectl delete httproute <name>",
+          "kubectl explain httproute.spec.rules"
         ],
         references: [
           { title: "Gateway API - HTTPRoute", url: "https://kubernetes.io/docs/concepts/services-networking/gateway/#api-kind-httproute" },
@@ -1513,7 +1868,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get grpcroutes",
-          "kubectl get tlsroutes"
+          "kubectl get grpcroutes -A",
+          "kubectl describe grpcroute <name>",
+          "kubectl get tlsroutes",
+          "kubectl get tlsroutes -A",
+          "kubectl describe tlsroute <name>",
+          "kubectl get tcproutes",
+          "kubectl get udproutes"
         ],
         references: [
           { title: "Gateway API", url: "https://kubernetes.io/docs/concepts/services-networking/gateway/" },
@@ -1531,7 +1892,12 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get gatewayclasses",
-          "kubectl describe gatewayclass <name>"
+          "kubectl describe gatewayclass <name>",
+          "kubectl get gatewayclass <name> -o yaml",
+          "kubectl apply -f gatewayclass.yaml",
+          "kubectl delete gatewayclass <name>",
+          "kubectl explain gatewayclass.spec",
+          "kubectl get crds | grep gateway"
         ],
         references: [
           { title: "Gateway API - GatewayClass", url: "https://kubernetes.io/docs/concepts/services-networking/gateway/#api-kind-gatewayclass" },
@@ -1559,7 +1925,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get pods -n ingress-nginx",
-          "kubectl get ingressclass"
+          "kubectl get ingressclass",
+          "kubectl describe ingressclass <name>",
+          "kubectl get ingressclass -o yaml",
+          "kubectl logs -n ingress-nginx <controller-pod>",
+          "kubectl describe pod -n ingress-nginx <controller-pod>",
+          "kubectl get svc -n ingress-nginx",
+          "kubectl get deployment -n ingress-nginx"
         ],
         references: [
           { title: "Ingress Controllers", url: "https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/" }
@@ -1576,8 +1948,15 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get ingress",
+          "kubectl get ingress -A",
           "kubectl describe ingress <name>",
-          "kubectl create ingress myingress --rule='host/path=svc:port'"
+          "kubectl get ingress <name> -o yaml",
+          "kubectl create ingress myingress --rule='host/path=svc:port'",
+          "kubectl create ingress myingress --rule='myapp.example.com/=myapp-svc:80' --dry-run=client -o yaml",
+          "kubectl edit ingress <name>",
+          "kubectl delete ingress <name>",
+          "kubectl explain ingress.spec.rules",
+          "curl -H 'Host: myapp.example.com' http://<ingress-ip>"
         ],
         references: [
           { title: "Ingress", url: "https://kubernetes.io/docs/concepts/services-networking/ingress/" }
@@ -1594,7 +1973,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl create secret tls my-tls --cert=cert.pem --key=key.pem",
-          "# In ingress spec:\n# tls:\n#   - hosts: [myapp.example.com]\n#     secretName: my-tls"
+          "kubectl get secret my-tls -o yaml",
+          "kubectl describe secret my-tls",
+          "# In ingress spec:\n# tls:\n#   - hosts: [myapp.example.com]\n#     secretName: my-tls",
+          "kubectl create ingress myingress --rule='myapp.example.com/=myapp-svc:80,tls=my-tls' --dry-run=client -o yaml",
+          "curl -k https://myapp.example.com (test TLS)",
+          "openssl s_client -connect <ingress-ip>:443 -servername myapp.example.com",
+          "kubectl explain ingress.spec.tls"
         ],
         references: [
           { title: "Ingress TLS", url: "https://kubernetes.io/docs/concepts/services-networking/ingress/#tls" }
@@ -1611,7 +1996,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get ingress -o wide",
-          "kubectl describe ingress <name>"
+          "kubectl describe ingress <name>",
+          "kubectl get ingress <name> -o yaml",
+          "kubectl create ingress multi-path --rule='/api/*=api-svc:80' --rule='/web/*=web-svc:80' --dry-run=client -o yaml",
+          "kubectl explain ingress.spec.rules.http.paths.pathType",
+          "curl http://<ingress-ip>/api/",
+          "curl http://<ingress-ip>/web/",
+          "kubectl get ingress <name> -o jsonpath='{.spec.rules[*].http.paths}'"
         ],
         references: [
           { title: "Ingress Path Types", url: "https://kubernetes.io/docs/concepts/services-networking/ingress/#path-types" }
@@ -1638,7 +2029,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get networkpolicies -n <namespace>",
-          "kubectl describe networkpolicy <name>"
+          "kubectl get netpol -A",
+          "kubectl describe networkpolicy <name> -n <namespace>",
+          "kubectl get networkpolicy <name> -o yaml",
+          "kubectl apply -f netpol.yaml",
+          "kubectl delete networkpolicy <name> -n <namespace>",
+          "kubectl explain networkpolicy.spec.ingress",
+          "kubectl exec <pod> -- curl <target-pod-ip>:<port> (test if traffic is allowed)"
         ],
         references: [
           { title: "Network Policies", url: "https://kubernetes.io/docs/concepts/services-networking/network-policies/" }
@@ -1655,7 +2052,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl apply -f egress-policy.yaml",
-          "kubectl get networkpolicies"
+          "kubectl get networkpolicies -n <namespace>",
+          "kubectl describe networkpolicy <name> -n <namespace>",
+          "kubectl get networkpolicy <name> -o yaml",
+          "kubectl explain networkpolicy.spec.egress",
+          "kubectl exec <pod> -- curl <external-ip>:<port> (test egress)",
+          "kubectl exec <pod> -- nslookup google.com (test DNS egress on port 53)",
+          "kubectl delete networkpolicy <name> -n <namespace>"
         ],
         references: [
           { title: "Network Policies", url: "https://kubernetes.io/docs/concepts/services-networking/network-policies/" }
@@ -1672,7 +2075,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl label namespace prod purpose=production",
-          "kubectl get pods --show-labels"
+          "kubectl get pods --show-labels",
+          "kubectl get pods -l app=myapp",
+          "kubectl get namespaces --show-labels",
+          "kubectl label namespace <namespace> team=frontend",
+          "kubectl get pods -l 'app in (web,api)' --show-labels",
+          "kubectl explain networkpolicy.spec.ingress.from",
+          "kubectl explain networkpolicy.spec.ingress.from.namespaceSelector"
         ],
         references: [
           { title: "Network Policies - Selectors", url: "https://kubernetes.io/docs/concepts/services-networking/network-policies/#behavior-of-to-and-from-selectors" }
@@ -1715,7 +2124,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl exec <pod> -- nslookup myservice.default.svc.cluster.local",
-          "kubectl exec <pod> -- nslookup kubernetes.default"
+          "kubectl exec <pod> -- nslookup kubernetes.default",
+          "kubectl exec <pod> -- nslookup <svc>.<namespace>.svc.cluster.local",
+          "kubectl run dnsutils --image=registry.k8s.io/e2e-test-images/jessie-dnsutils:1.3 -it --rm -- nslookup <service>",
+          "kubectl exec <pod> -- cat /etc/resolv.conf",
+          "kubectl exec <pod> -- dig SRV <svc>.<namespace>.svc.cluster.local",
+          "kubectl get svc -A (verify service exists)",
+          "kubectl get endpoints <svc> -n <namespace>"
         ],
         references: [
           { title: "DNS for Services and Pods", url: "https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/" }
@@ -1733,7 +2148,12 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl get configmap coredns -n kube-system -o yaml",
           "kubectl edit configmap coredns -n kube-system",
-          "kubectl rollout restart deployment coredns -n kube-system"
+          "kubectl rollout restart deployment coredns -n kube-system",
+          "kubectl get pods -n kube-system -l k8s-app=kube-dns",
+          "kubectl logs -n kube-system -l k8s-app=kube-dns",
+          "kubectl describe configmap coredns -n kube-system",
+          "kubectl get deployment coredns -n kube-system",
+          "kubectl describe deployment coredns -n kube-system"
         ],
         references: [
           { title: "Customizing DNS Service", url: "https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/" },
@@ -1751,7 +2171,12 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get pods -n kube-system -l k8s-app=kube-dns",
-          "kubectl logs -n kube-system -l k8s-app=kube-dns"
+          "kubectl logs -n kube-system -l k8s-app=kube-dns",
+          "kubectl get configmap coredns -n kube-system -o yaml",
+          "kubectl edit configmap coredns -n kube-system",
+          "kubectl rollout restart deployment coredns -n kube-system",
+          "kubectl run dnstest --image=busybox:1.28 -it --rm -- nslookup <custom-domain>",
+          "kubectl exec <pod> -- cat /etc/resolv.conf"
         ],
         references: [
           { title: "Customizing DNS Service", url: "https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/" }
@@ -1781,8 +2206,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get storageclasses",
+          "kubectl get sc",
           "kubectl describe storageclass <name>",
-          "kubectl get sc"
+          "kubectl get sc -o yaml",
+          "kubectl get sc <name> -o yaml",
+          "kubectl apply -f storageclass.yaml",
+          "kubectl delete sc <name>",
+          "kubectl patch storageclass <name> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"true\"}}}'",
+          "kubectl get sc -o jsonpath='{.items[?(@.metadata.annotations.storageclass\\.kubernetes\\.io/is-default-class==\"true\")].metadata.name}'"
         ],
         references: [
           { title: "Storage Classes", url: "https://kubernetes.io/docs/concepts/storage/storage-classes/" }
@@ -1799,7 +2230,12 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get sc -o wide",
-          "kubectl patch storageclass <name> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"true\"}}}'"
+          "kubectl get sc (check default class marker)",
+          "kubectl patch storageclass <name> -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"true\"}}}'",
+          "kubectl get pvc -A (check STORAGECLASS column)",
+          "kubectl describe pvc <name> -n <namespace> (check provisioning events)",
+          "kubectl get pv (verify dynamically provisioned PVs)",
+          "kubectl apply -f pvc.yaml (trigger dynamic provisioning)"
         ],
         references: [
           { title: "Dynamic Volume Provisioning", url: "https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/" }
@@ -1816,7 +2252,12 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get csidrivers",
-          "kubectl describe storageclass <name>"
+          "kubectl describe csidrivers <name>",
+          "kubectl describe storageclass <name>",
+          "kubectl get csinodes",
+          "kubectl describe csinode <node>",
+          "kubectl get sc -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.provisioner}{\"\\t\"}{.volumeBindingMode}{\"\\n\"}{end}'",
+          "kubectl get volumeattachments"
         ],
         references: [
           { title: "StorageClass Provisioner", url: "https://kubernetes.io/docs/concepts/storage/storage-classes/#provisioner" }
@@ -1843,7 +2284,12 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get pv (check ACCESS MODES column)",
-          "kubectl describe pv <name>"
+          "kubectl describe pv <name>",
+          "kubectl get pvc -A (check ACCESS MODES column)",
+          "kubectl get pv -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.spec.accessModes}{\"\\n\"}{end}'",
+          "kubectl explain pv.spec.accessModes",
+          "kubectl explain pvc.spec.accessModes",
+          "kubectl get pv <name> -o yaml | grep -A2 accessModes"
         ],
         references: [
           { title: "Access Modes", url: "https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes" }
@@ -1861,7 +2307,14 @@ const MIND_MAP_DATA = {
           "projected: combine multiple volume sources"
         ],
         commands: [
-          "# In pod spec:\n# volumes:\n#   - name: data\n#     emptyDir: {}\n#   - name: host-data\n#     hostPath:\n#       path: /data\n#       type: DirectoryOrCreate"
+          "kubectl explain pod.spec.volumes",
+          "kubectl explain pod.spec.volumes.emptyDir",
+          "kubectl explain pod.spec.volumes.hostPath",
+          "kubectl explain pod.spec.volumes.persistentVolumeClaim",
+          "kubectl explain pod.spec.volumes.configMap",
+          "kubectl explain pod.spec.volumes.secret",
+          "kubectl explain pod.spec.volumes.projected",
+          "kubectl get pod <pod> -o jsonpath='{.spec.volumes}'"
         ],
         references: [
           { title: "Volumes", url: "https://kubernetes.io/docs/concepts/storage/volumes/" },
@@ -1878,7 +2331,12 @@ const MIND_MAP_DATA = {
           "Not all storage backends support block mode"
         ],
         commands: [
-          "kubectl get pv -o wide"
+          "kubectl get pv -o wide",
+          "kubectl get pv -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.spec.volumeMode}{\"\\n\"}{end}'",
+          "kubectl explain pv.spec.volumeMode",
+          "kubectl explain pvc.spec.volumeMode",
+          "kubectl describe pv <name> | grep -i volumemode",
+          "kubectl get pv <name> -o yaml | grep volumeMode"
         ],
         references: [
           { title: "Volume Mode", url: "https://kubernetes.io/docs/concepts/storage/persistent-volumes/#volume-mode" }
@@ -1905,8 +2363,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get pv",
+          "kubectl get pv -o wide",
           "kubectl describe pv <name>",
-          "kubectl apply -f pv.yaml"
+          "kubectl get pv <name> -o yaml",
+          "kubectl apply -f pv.yaml",
+          "kubectl delete pv <name>",
+          "kubectl get pv --sort-by=.spec.capacity.storage",
+          "kubectl get pv -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.spec.capacity.storage}{\"\\t\"}{.status.phase}{\"\\n\"}{end}'",
+          "kubectl explain pv.spec"
         ],
         references: [
           { title: "Persistent Volumes", url: "https://kubernetes.io/docs/concepts/storage/persistent-volumes/" }
@@ -1924,8 +2388,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get pvc -n <namespace>",
-          "kubectl describe pvc <name>",
-          "kubectl delete pvc <name>"
+          "kubectl get pvc -A",
+          "kubectl describe pvc <name> -n <namespace>",
+          "kubectl get pvc <name> -o yaml",
+          "kubectl apply -f pvc.yaml",
+          "kubectl delete pvc <name> -n <namespace>",
+          "kubectl patch pvc <name> -p '{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"10Gi\"}}}}'",
+          "kubectl get pvc -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.spec.resources.requests.storage}{\"\\t\"}{.status.phase}{\"\\n\"}{end}'"
         ],
         references: [
           { title: "PersistentVolumeClaims", url: "https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims" },
@@ -1943,7 +2412,11 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get pv (check RECLAIM POLICY column)",
-          "kubectl patch pv <name> -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}'"
+          "kubectl patch pv <name> -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}'",
+          "kubectl get pv -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.spec.persistentVolumeReclaimPolicy}{\"\\n\"}{end}'",
+          "kubectl describe pv <name> | grep -i reclaim",
+          "kubectl get sc -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.reclaimPolicy}{\"\\n\"}{end}'",
+          "kubectl explain pv.spec.persistentVolumeReclaimPolicy"
         ],
         references: [
           { title: "Reclaim Policy", url: "https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming" }
@@ -1960,7 +2433,12 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get pv,pvc",
-          "kubectl describe pvc <name> (check Events for binding status)"
+          "kubectl describe pvc <name> (check Events for binding status)",
+          "kubectl get pv -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.spec.claimRef.name}{\"\\t\"}{.status.phase}{\"\\n\"}{end}'",
+          "kubectl get pvc -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.spec.volumeName}{\"\\t\"}{.status.phase}{\"\\n\"}{end}'",
+          "kubectl get pv | grep -i available",
+          "kubectl get pvc | grep -i pending",
+          "kubectl describe pv <name> | grep -A2 claimRef"
         ],
         references: [
           { title: "PV/PVC Binding", url: "https://kubernetes.io/docs/concepts/storage/persistent-volumes/#binding" }
@@ -1989,9 +2467,15 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get nodes",
+          "kubectl get nodes -o wide",
           "kubectl describe node <node>",
+          "kubectl get node <node> -o jsonpath='{.status.conditions}' | jq .",
+          "kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{range .status.conditions[*]}{.type}={.status}{\" \"}{end}{\"\\n\"}{end}'",
           "systemctl status kubelet",
-          "journalctl -u kubelet -f"
+          "journalctl -u kubelet -f",
+          "kubectl cordon <node>",
+          "kubectl uncordon <node>",
+          "kubectl drain <node> --ignore-daemonsets --delete-emptydir-data"
         ],
         references: [
           { title: "Troubleshooting Clusters", url: "https://kubernetes.io/docs/tasks/debug/debug-cluster/" },
@@ -2010,8 +2494,13 @@ const MIND_MAP_DATA = {
         commands: [
           "systemctl status kubelet",
           "systemctl restart kubelet",
+          "systemctl enable kubelet",
           "journalctl -u kubelet --since '5 min ago'",
-          "cat /var/lib/kubelet/config.yaml"
+          "journalctl -u kubelet -f",
+          "journalctl -u kubelet --no-pager | tail -50",
+          "cat /var/lib/kubelet/config.yaml",
+          "ls /etc/kubernetes/manifests/",
+          "kubelet --version"
         ],
         references: [
           { title: "Kubelet", url: "https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/" },
@@ -2029,9 +2518,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get ds kube-proxy -n kube-system",
+          "kubectl get pods -n kube-system -l k8s-app=kube-proxy",
           "kubectl logs -n kube-system -l k8s-app=kube-proxy",
+          "kubectl describe ds kube-proxy -n kube-system",
+          "kubectl get configmap kube-proxy -n kube-system -o yaml",
+          "kubectl edit configmap kube-proxy -n kube-system",
           "iptables -t nat -L KUBE-SERVICES",
-          "kubectl get configmap kube-proxy -n kube-system -o yaml"
+          "iptables -t nat -L KUBE-NODEPORTS",
+          "kubectl rollout restart ds kube-proxy -n kube-system"
         ],
         references: [
           { title: "kube-proxy", url: "https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/" },
@@ -2050,7 +2544,13 @@ const MIND_MAP_DATA = {
         commands: [
           "kubeadm certs check-expiration",
           "openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -text",
-          "kubeadm certs renew all"
+          "openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -dates",
+          "kubeadm certs renew all",
+          "kubeadm certs renew apiserver",
+          "ls /etc/kubernetes/pki/",
+          "openssl x509 -in /etc/kubernetes/pki/ca.crt -noout -subject -issuer",
+          "kubectl get csr",
+          "kubectl certificate approve <csr-name>"
         ],
         references: [
           { title: "Certificate Management with kubeadm", url: "https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/" },
@@ -2079,8 +2579,14 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl get pods -n kube-system | grep apiserver",
           "kubectl logs kube-apiserver-<node> -n kube-system",
+          "kubectl logs kube-apiserver-<node> -n kube-system --tail=100",
           "cat /etc/kubernetes/manifests/kube-apiserver.yaml",
-          "crictl ps | grep apiserver"
+          "crictl ps | grep apiserver",
+          "crictl logs <apiserver-container-id>",
+          "kubectl get --raw /healthz",
+          "kubectl get --raw /livez",
+          "kubectl get --raw /readyz",
+          "curl -k https://localhost:6443/healthz"
         ],
         references: [
           { title: "kube-apiserver", url: "https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/" },
@@ -2099,7 +2605,12 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl get pods -n kube-system | grep scheduler",
           "kubectl logs kube-scheduler-<node> -n kube-system",
-          "kubectl describe pod <pending-pod> (check Events)"
+          "kubectl logs kube-scheduler-<node> -n kube-system --tail=100",
+          "cat /etc/kubernetes/manifests/kube-scheduler.yaml",
+          "kubectl describe pod <pending-pod> (check Events)",
+          "kubectl get events --field-selector reason=FailedScheduling",
+          "crictl ps | grep scheduler",
+          "crictl logs <scheduler-container-id>"
         ],
         references: [
           { title: "kube-scheduler", url: "https://kubernetes.io/docs/reference/command-line-tools-reference/kube-scheduler/" },
@@ -2117,7 +2628,13 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get pods -n kube-system | grep controller-manager",
-          "kubectl logs kube-controller-manager-<node> -n kube-system"
+          "kubectl logs kube-controller-manager-<node> -n kube-system",
+          "kubectl logs kube-controller-manager-<node> -n kube-system --tail=100",
+          "cat /etc/kubernetes/manifests/kube-controller-manager.yaml",
+          "crictl ps | grep controller-manager",
+          "crictl logs <controller-manager-container-id>",
+          "kubectl get lease -n kube-system (check leader election)",
+          "kubectl describe lease kube-controller-manager -n kube-system"
         ],
         references: [
           { title: "kube-controller-manager", url: "https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/" },
@@ -2136,8 +2653,14 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl get pods -n kube-system | grep etcd",
           "kubectl logs etcd-<node> -n kube-system",
+          "kubectl logs etcd-<node> -n kube-system --tail=100",
+          "cat /etc/kubernetes/manifests/etcd.yaml",
+          "crictl ps | grep etcd",
           "ETCDCTL_API=3 etcdctl endpoint health --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
-          "ETCDCTL_API=3 etcdctl member list --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key"
+          "ETCDCTL_API=3 etcdctl member list --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
+          "ETCDCTL_API=3 etcdctl endpoint status --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key --write-out=table",
+          "ETCDCTL_API=3 etcdctl snapshot save /tmp/etcd-backup.db --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
+          "ETCDCTL_API=3 etcdctl snapshot restore /tmp/etcd-backup.db --data-dir=/var/lib/etcd-restored"
         ],
         references: [
           { title: "Operating etcd Clusters", url: "https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/" },
@@ -2165,9 +2688,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl top nodes",
+          "kubectl top node <node>",
           "kubectl top pods -A",
+          "kubectl top pods -n <namespace>",
           "kubectl top pods --containers -n <namespace>",
-          "kubectl top pods --sort-by=memory"
+          "kubectl top pods --sort-by=memory",
+          "kubectl top pods --sort-by=cpu",
+          "kubectl get apiservice v1beta1.metrics.k8s.io (check metrics-server)",
+          "kubectl get pods -n kube-system | grep metrics-server"
         ],
         references: [
           { title: "Resource Metrics Pipeline", url: "https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/" },
@@ -2185,8 +2713,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get resourcequotas -n <namespace>",
-          "kubectl describe resourcequota <name>",
-          "kubectl get limitranges -n <namespace>"
+          "kubectl get resourcequotas -A",
+          "kubectl describe resourcequota <name> -n <namespace>",
+          "kubectl create quota my-quota --hard=pods=10,requests.cpu=4,requests.memory=8Gi -n <namespace>",
+          "kubectl get limitranges -n <namespace>",
+          "kubectl describe limitrange <name> -n <namespace>",
+          "kubectl apply -f resourcequota.yaml",
+          "kubectl delete resourcequota <name> -n <namespace>",
+          "kubectl get resourcequota <name> -o yaml -n <namespace>"
         ],
         references: [
           { title: "Resource Quotas", url: "https://kubernetes.io/docs/concepts/policy/resource-quotas/" },
@@ -2205,7 +2739,13 @@ const MIND_MAP_DATA = {
         commands: [
           "kubectl get events -A --sort-by='.lastTimestamp'",
           "kubectl get events -n <namespace>",
-          "kubectl get events --field-selector type=Warning"
+          "kubectl get events --field-selector type=Warning",
+          "kubectl get events --field-selector reason=FailedScheduling",
+          "kubectl get events --field-selector involvedObject.kind=Pod",
+          "kubectl get events --field-selector involvedObject.name=<pod-name>",
+          "kubectl describe pod <pod> (check Events at bottom)",
+          "kubectl get events -n <namespace> --sort-by='.metadata.creationTimestamp' | tail -20",
+          "kubectl get events -A -o json | jq '.items[] | select(.type==\"Warning\")'"
         ],
         references: [
           { title: "Viewing Events", url: "https://kubernetes.io/docs/reference/kubectl/generated/kubectl_events/" },
@@ -2305,8 +2845,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl run dnsutils --image=registry.k8s.io/e2e-test-images/jessie-dnsutils:1.3 -it --rm -- nslookup kubernetes.default",
+          "kubectl run dnsutils --image=registry.k8s.io/e2e-test-images/jessie-dnsutils:1.3 -it --rm -- nslookup <svc>.<namespace>.svc.cluster.local",
+          "kubectl run dnsutils --image=registry.k8s.io/e2e-test-images/jessie-dnsutils:1.3 -it --rm -- dig <svc>.<namespace>.svc.cluster.local",
           "kubectl get pods -n kube-system -l k8s-app=kube-dns",
-          "kubectl logs -n kube-system -l k8s-app=kube-dns"
+          "kubectl logs -n kube-system -l k8s-app=kube-dns",
+          "kubectl exec <pod> -- cat /etc/resolv.conf",
+          "kubectl get configmap coredns -n kube-system -o yaml",
+          "kubectl get svc kube-dns -n kube-system",
+          "kubectl get endpoints kube-dns -n kube-system"
         ],
         references: [
           { title: "Debugging DNS Resolution", url: "https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/" }
@@ -2323,10 +2869,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get svc <service>",
+          "kubectl get svc <service> -o wide",
           "kubectl get endpoints <service>",
           "kubectl describe svc <service>",
+          "kubectl get svc <service> -o yaml",
           "kubectl exec <pod> -- curl <service>:<port>",
-          "kubectl exec <pod> -- wget -O- <service>:<port>"
+          "kubectl exec <pod> -- wget -O- <service>:<port>",
+          "kubectl exec <pod> -- nslookup <service>",
+          "kubectl get pods -l <selector-key>=<selector-value> (verify matching pods)"
         ],
         references: [
           { title: "Debug Services", url: "https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/" }
@@ -2345,7 +2895,12 @@ const MIND_MAP_DATA = {
           "kubectl get pods -o wide",
           "kubectl exec <pod1> -- ping <pod2-ip>",
           "kubectl exec <pod1> -- curl <pod2-ip>:<port>",
-          "kubectl get networkpolicies -n <namespace>"
+          "kubectl get networkpolicies -n <namespace>",
+          "kubectl describe networkpolicy <name> -n <namespace>",
+          "kubectl debug -it <pod> --image=nicolaka/netshoot -- bash",
+          "kubectl run netshoot --image=nicolaka/netshoot -it --rm -- bash",
+          "kubectl exec <pod> -- traceroute <pod2-ip>",
+          "kubectl get pods -n kube-system -l k8s-app=calico-node (check CNI status)"
         ],
         references: [
           { title: "Debug Services", url: "https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/" },
@@ -2363,9 +2918,14 @@ const MIND_MAP_DATA = {
         ],
         commands: [
           "kubectl get ingress",
+          "kubectl get ingress -A",
           "kubectl describe ingress <name>",
+          "kubectl get ingress <name> -o yaml",
           "kubectl get pods -n ingress-nginx",
-          "kubectl logs -n ingress-nginx <controller-pod>"
+          "kubectl logs -n ingress-nginx <controller-pod>",
+          "kubectl get svc -n ingress-nginx",
+          "kubectl describe svc -n ingress-nginx <service>",
+          "curl -H 'Host: <hostname>' http://<ingress-ip>"
         ],
         references: [
           { title: "Ingress", url: "https://kubernetes.io/docs/concepts/services-networking/ingress/" },
