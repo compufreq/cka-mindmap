@@ -39,6 +39,9 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 12px 24px;
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
   background: linear-gradient(180deg, rgba(13, 17, 23, 0.98) 0%, rgba(13, 17, 23, 0.92) 100%);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 10;
@@ -548,6 +551,9 @@ body {
 /* === Footer === */
 .footer {
   padding: 8px 24px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
   text-align: center;
   font-size: 11px;
   color: var(--text-muted);
