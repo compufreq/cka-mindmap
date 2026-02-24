@@ -69,8 +69,8 @@
 ## 1.1 What Is Kubernetes?
 
 **Kubernetes** (often abbreviated K8s — there are 8 letters between K and s) is an open-source
-container orchestration system originally designed by Google and donated to the Cloud Native
-Computing Foundation (CNCF) in 2014. Today it is the industry standard for deploying, scaling,
+container orchestration system originally designed by Google and open-sourced in June 2014. It was donated to the
+Cloud Native Computing Foundation (CNCF) when the CNCF was founded in 2016. Today it is the industry standard for deploying, scaling,
 and managing containerized workloads.
 
 At its core, Kubernetes solves three fundamental problems that arise when running containers at scale:
@@ -5060,7 +5060,7 @@ changing DNS or Service configurations.
 
 ---
 
-## 11.6 Troubleshooting Gateway API
+## 11.9 Troubleshooting Gateway API
 
 **Error: Gateway API CRDs not installed**
 
@@ -7075,7 +7075,7 @@ to `docker exec` in the Docker world and operates by connecting to the container
 kubectl exec <pod-name> -- <command>
 ```
 
-### 17.2 Running a Single Non-Interactive Command
+### 12.2 Running a Single Non-Interactive Command
 
 Use this when you want to run a command and get its output without opening a shell session. This is
 ideal for quick inspections, script automation, and health checks.
@@ -7123,7 +7123,7 @@ kubectl exec my-app-pod -- cat /etc/nginx/nginx.conf
 needing to copy it out of the container.
 
 
-### 17.3 Opening an Interactive Shell Session
+### 12.3 Opening an Interactive Shell Session
 
 When you need to explore a container interactively, navigate the filesystem, run multiple commands,
 or troubleshoot dynamically, you open an interactive shell.
@@ -7165,7 +7165,7 @@ kubectl exec -it my-app-pod -- bash 2>/dev/null || kubectl exec -it my-app-pod -
 
 ---
 
-### 17.4 Targeting a Specific Container in a Multi-Container Pod
+### 12.4 Targeting a Specific Container in a Multi-Container Pod
 
 When a Pod has more than one container, you must specify which container to target using `-c`.
 
@@ -7193,7 +7193,7 @@ kubectl exec my-app-pod -c app -- cat /var/log/app.log
 ```
 
 
-### 17.5 Passing Arguments with Special Characters
+### 12.5 Passing Arguments with Special Characters
 
 When your command contains pipes, redirects, or shell operators, you need to invoke a shell explicitly
 inside the container to interpret them, rather than letting kubectl try to parse them.
@@ -7643,7 +7643,7 @@ kubectl cp <source> <destination>
 
 For container paths, use the format: `<pod-name>:<path>` or `<pod-name>/<container-name>:<path>`
 
-### 19.2 Copying FROM a Container to Local
+### 14.2 Copying FROM a Container to Local
 
 **Example: Copy a log file from the container to your current directory**
 
@@ -7670,7 +7670,7 @@ kubectl cp my-app-pod:/var/log/app.log -c sidecar ./app.log
 ```
 
 
-### 19.3 Copying FROM Local TO a Container
+### 14.3 Copying FROM Local TO a Container
 
 **Example: Upload a configuration file into a running container**
 
@@ -9953,19 +9953,19 @@ kubectl run dnstest --image=busybox:1.35 --rm -it --restart=Never -- \
 
 ---
 
-<a name="chapter-27"></a>
+<a name="chapter-22"></a>
 # Chapter 27 — Advanced Debugging with Ephemeral Containers
 
 ## 27.1 What Are Ephemeral Containers?
 
-Kubernetes 1.25+ introduced **Ephemeral Containers** as a stable (GA) feature. Unlike regular containers
+Kubernetes 1.23+ introduced **Ephemeral Containers** as a stable feature. Unlike regular containers
 in a Pod spec, ephemeral containers are temporary — they share the Pod's namespaces (network, PID,
 etc.) but can be added to a running Pod without restarting it.
 
 This solves a critical problem: distroless and minimal images have no shell and no debugging tools.
 An ephemeral container can be injected into the same Pod at runtime to debug it.
 
-### 27.2 Adding an Ephemeral Container to a Running Pod
+### 22.2 Adding an Ephemeral Container to a Running Pod
 
 **Example: Inject a debug container into a running Pod**
 
@@ -9993,7 +9993,7 @@ kubectl debug -it my-distroless-pod \
 *What this does:* Since distroless images have no shell, this injects a busybox container into the
 same Pod namespace, giving you a shell that shares the network stack with the distroless container.
 
-### 27.3 Creating a Debug Copy of a Pod
+### 22.3 Creating a Debug Copy of a Pod
 
 If you need to modify the pod spec for debugging (e.g., change the entrypoint, add capabilities),
 you can create a copy of the Pod with modifications.
@@ -10019,7 +10019,7 @@ kubectl delete pod my-app-debug
 ```
 
 
-### 27.4 Running a Debug Node Pod (Privileged)
+### 22.4 Running a Debug Node Pod (Privileged)
 
 To debug node-level networking or filesystem issues:
 
@@ -10895,7 +10895,7 @@ configMapGenerator:
       - LOG_LEVEL=info
       - MAX_CONNECTIONS=100
     options:
-      disableNameSuffixHash: true    # Set true to disable hash suffix (default: false, hash enabled)
+      disableNameSuffixHash: false   # Default: true. Set false to disable hash suffix
 ```
 
 *What the hash suffix does:* By default, Kustomize appends an 8-character hash of the ConfigMap
@@ -11226,7 +11226,7 @@ using only a terminal. There are no multiple-choice questions.
 | Questions | ~17 performance-based tasks |
 | Passing score | 66% |
 | Exam mode | Online proctored (browser-based terminal) |
-| Kubernetes version | Current stable (expected: 1.30 or 1.31 in 2026) |
+| Kubernetes version | Kubernetes 1.32 (current stable as of 2026) |
 | Retake policy | 1 free retake included |
 | Validity | 3 years from passing date |
 | Environment | PSI Bridge secure browser + provided kubeconfig |
@@ -11632,7 +11632,11 @@ ETCDCTL_API=3 etcdctl snapshot status /tmp/etcd-backup.db \
 
 ```bash
 ETCDCTL_API=3 etcdctl snapshot restore /tmp/etcd-backup.db \
-  --data-dir=/var/lib/etcd-restored
+  --data-dir=/var/lib/etcd-restored \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key
 ```
 
 Then update the etcd static Pod manifest to use the new data directory:

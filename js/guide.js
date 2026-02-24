@@ -12,6 +12,36 @@
       file: '../guides/linux-network-commands.md',
       title: 'Complete Linux Network Commands Reference',
       breadcrumb: 'Linux Networking Guide'
+    },
+    'gateway-api': {
+      file: '../guides/gateway-api-complete-guide.md',
+      title: 'Gateway API Complete Guide',
+      breadcrumb: 'Gateway API Guide'
+    },
+    'gateway-api-cka': {
+      file: '../guides/gateway-api-cka-guide.md',
+      title: 'Gateway API CKA Step-by-Step Guide',
+      breadcrumb: 'Gateway API CKA Guide'
+    },
+    'coredns': {
+      file: '../guides/coredns-complete-guide.md',
+      title: 'CoreDNS Kubernetes Complete Guide',
+      breadcrumb: 'CoreDNS Guide'
+    },
+    'coredns-cka': {
+      file: '../guides/coredns-cka-guide.md',
+      title: 'CoreDNS CKA Step-by-Step Guide',
+      breadcrumb: 'CoreDNS CKA Guide'
+    },
+    'ingress': {
+      file: '../guides/ingress-complete-guide.md',
+      title: 'Ingress Complete Guide',
+      breadcrumb: 'Ingress Guide'
+    },
+    'ingress-cka': {
+      file: '../guides/ingress-cka-guide.md',
+      title: 'Ingress CKA Step-by-Step Guide',
+      breadcrumb: 'Ingress CKA Guide'
     }
   };
 

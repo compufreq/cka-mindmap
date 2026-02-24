@@ -5,42 +5,62 @@
 
 #### TABLE OF CONTENTS
 
-**Full Sections (1–25)**
-
 1. ip — Network Interface, Routing & Tunnel Management
 2. ping — ICMP Connectivity Testing
-3. traceroute — Trace the Route to a Host
+3. traceroute — Route Tracing
 4. tracepath — Route Tracing Without Root
 5. mtr — Combined Traceroute + Ping
 6. ss — Socket Statistics
 7. netstat — Network Statistics (Legacy)
 8. curl — Data Transfer Tool
-9. wget — Non-Interactive Network Downloader
+9. wget — Non-Interactive Downloader
 10. dig — DNS Lookup Utility
 11. nslookup — DNS Query Tool
 12. host — Simple DNS Lookup
 13. nmap — Network Scanner
 14. tcpdump — Packet Capture & Analysis
 15. iptables — Firewall (Netfilter)
-16. ufw — Uncomplicated Firewall
-17. firewall-cmd — Firewalld CLI (RHEL/CentOS/Fedora)
-18. ssh — Secure Shell
-19. scp — Secure Copy
-20. sftp — Secure FTP
-21. rsync — Remote File Synchronization
-22. nc / netcat — Network Swiss Army Knife
-23. iperf3 — Network Performance Testing
-24. ethtool — NIC Hardware Settings
-25. nmcli — NetworkManager CLI
-
-**Quick Reference (26–56)**
-
-26–30. ncat, socat, whois, hostname/hostnamectl, ipcalc
-31–35. lsof, fuser, iftop, vnstat, nethogs
-36–40. bmon, nftables, tc, iwconfig, iw
-41–45. brctl, bridge, tunctl/ip tuntap, vconfig/ip link, dhclient
-46–50. resolvectl, telnet, ab, openssl s_client, tcpflow
-51–56. tshark, ifconfig, route, arp, nmtui, ip neigh
+16. nftables — Modern Firewall
+17. firewall-cmd — Firewalld CLI
+18. ufw — Uncomplicated Firewall
+19. ifconfig — Interface Configuration (Legacy)
+20. route — Routing Table (Legacy)
+21. arp — ARP Cache Management
+22. ip neigh — ARP/NDP Management (Modern)
+23. ethtool — NIC Hardware Settings
+24. nmcli — NetworkManager CLI
+25. nmtui — NetworkManager Text UI
+26. ssh — Secure Shell
+27. scp — Secure Copy
+28. sftp — Secure FTP
+29. rsync — Remote File Sync
+30. nc / netcat — Network Swiss Army Knife
+31. ncat — Modern Netcat (Nmap)
+32. socat — Multipurpose Relay
+33. whois — Domain Registration Lookup
+34. hostname / hostnamectl — Hostname Management
+35. ipcalc — IP Address Calculator
+36. lsof — List Open Network Sockets
+37. fuser — Identify Processes Using Ports
+38. iftop — Real-Time Bandwidth Monitor
+39. vnstat — Traffic Monitor (Historical)
+40. nethogs — Per-Process Bandwidth Monitor
+41. bmon — Bandwidth Monitor
+42. iperf3 — Network Performance Testing
+43. tc — Traffic Control (QoS)
+44. iwconfig — Wireless Configuration (Legacy)
+45. iw — Wireless Configuration (Modern)
+46. brctl — Bridge Control (Legacy)
+47. bridge — Bridge Management (Modern)
+48. tunctl / ip tuntap — TUN/TAP Devices
+49. vconfig / ip link — VLAN Management
+50. dhclient — DHCP Client
+51. resolvectl / systemd-resolve — DNS Resolution
+52. telnet — Remote Connection (Legacy)
+53. ab — Apache HTTP Benchmarking
+54. openssl s_client — SSL/TLS Testing
+55. tcpflow — TCP Stream Reconstruction
+56. tshark — Terminal Wireshark
 
 ---
 
@@ -3086,7 +3106,7 @@ tcpdump -D
 
 | Chain | Table | Description |
 |-------|-------|-------------|
-| `INPUT` | filter, nat, mangle, security | Incoming packets destined for the local machine |
+| `INPUT` | filter, mangle, security | Incoming packets destined for the local machine |
 | `FORWARD` | filter, mangle, security | Packets being routed through the machine |
 | `OUTPUT` | filter, nat, mangle, raw, security | Outgoing packets from the local machine |
 | `PREROUTING` | nat, mangle, raw | Before routing decision |
@@ -3351,11 +3371,270 @@ sudo ip6tables -L -n -v
 
 ---
 
-# 16–25: Firewalls, Remote Access & Network Tools
+# 16. `nftables` — Modern Firewall (Replaces iptables)
+
+`nftables` is the modern Linux packet filtering framework that supersedes `iptables`, `ip6tables`, `arptables`, and `ebtables` in a single unified tool. Default on Debian 10+, Ubuntu 22.04+, RHEL 8+, and Fedora 32+.
+
+## General Syntax
+
+```bash
+nft [ options ] COMMAND OBJECT
+nft -f /path/to/rules.nft       # Load rules from file
+```
+
+## Address Families
+
+| Family | Handles |
+|--------|---------|
+| `ip` | IPv4 |
+| `ip6` | IPv6 |
+| `inet` | IPv4 + IPv6 (recommended for most rules) |
+| `arp` | ARP |
+| `bridge` | Ethernet bridge |
+| `netdev` | Ingress/egress per-device |
+
+## Listing and Inspecting
+
+```bash
+# List everything (tables, chains, rules, sets)
+sudo nft list ruleset
+
+# List a specific table
+sudo nft list table inet filter
+
+# List a chain
+sudo nft list chain inet filter input
+
+# Show handles (needed for rule deletion)
+sudo nft -a list ruleset
+
+# JSON output
+sudo nft -j list ruleset
+
+# Monitor events in real time
+sudo nft monitor
+```
+
+## Tables
+
+```bash
+# Create table
+sudo nft add table inet filter
+
+# Delete table (removes all chains and rules)
+sudo nft delete table inet filter
+
+# Flush table (remove all rules, keep structure)
+sudo nft flush table inet filter
+```
+
+## Chains
+
+Chains attach to **hooks** in the network stack: `prerouting`, `input`, `forward`, `output`, `postrouting`.
+
+```bash
+# Create a base chain (with hook, type, and default policy)
+sudo nft add chain inet filter input \
+  '{ type filter hook input priority 0; policy drop; }'
+
+# Create a regular chain (called from rules, no hook)
+sudo nft add chain inet filter my_chain
+
+# Delete a chain
+sudo nft delete chain inet filter my_chain
+
+# Flush a chain (remove its rules)
+sudo nft flush chain inet filter input
+```
+
+## Rules
+
+```bash
+# Allow loopback
+sudo nft add rule inet filter input iif lo accept
+
+# Allow established and related
+sudo nft add rule inet filter input ct state established,related accept
+
+# Allow SSH (with rate limit)
+sudo nft add rule inet filter input tcp dport 22 ct state new limit rate 5/minute accept
+
+# Allow HTTP and HTTPS
+sudo nft add rule inet filter input tcp dport { 80, 443 } accept
+
+# Allow DNS (UDP + TCP)
+sudo nft add rule inet filter input meta l4proto { tcp, udp } th dport 53 accept
+
+# Allow ICMP (ping)
+sudo nft add rule inet filter input icmp type echo-request accept
+sudo nft add rule inet filter input icmpv6 type echo-request accept
+
+# Drop and log everything else
+sudo nft add rule inet filter input log prefix "INPUT DROP: " drop
+
+# Block a specific IP
+sudo nft add rule inet filter input ip saddr 192.168.1.50 drop
+
+# Block a subnet
+sudo nft add rule inet filter input ip saddr 10.0.0.0/8 drop
+
+# Insert rule at position 0 (before all others)
+sudo nft insert rule inet filter input iif lo accept
+
+# Delete rule by handle (get handle with nft -a list)
+sudo nft delete rule inet filter input handle 5
+
+# Replace all rules atomically from a file
+sudo nft -f /etc/nftables.conf
+```
+
+## Sets (Named Groups)
+
+```bash
+# Create a named IP set
+sudo nft add set inet filter blacklist '{ type ipv4_addr; }'
+
+# Add IPs to the set
+sudo nft add element inet filter blacklist { 192.168.1.50, 10.0.0.1 }
+
+# Reference set in a rule
+sudo nft add rule inet filter input ip saddr @blacklist drop
+
+# Delete element from set
+sudo nft delete element inet filter blacklist { 192.168.1.50 }
+
+# Interval set for port ranges
+sudo nft add set inet filter allowed_ports '{ type inet_service; flags interval; }'
+sudo nft add element inet filter allowed_ports { 80, 443, 8000-8100 }
+```
+
+## NAT
+
+```bash
+# Create NAT table and chains
+sudo nft add table nat
+sudo nft add chain nat prerouting  '{ type nat hook prerouting priority -100; }'
+sudo nft add chain nat postrouting '{ type nat hook postrouting priority 100; }'
+
+# Masquerade (internet sharing / SNAT for outbound)
+sudo nft add rule nat postrouting oif eth0 masquerade
+
+# Static SNAT
+sudo nft add rule nat postrouting ip saddr 192.168.1.0/24 snat to 203.0.113.1
+
+# DNAT / Port forwarding (redirect inbound port 80 to internal host)
+sudo nft add rule nat prerouting tcp dport 80 dnat to 192.168.1.10:8080
+
+# Redirect port locally
+sudo nft add rule nat prerouting tcp dport 80 redirect to :8080
+```
+
+## Complete Rule File Example
+
+```bash
+# /etc/nftables.conf
+table inet filter {
+    chain input {
+        type filter hook input priority 0; policy drop;
+        iif lo accept
+        ct state established,related accept
+        icmp type echo-request accept
+        icmpv6 type echo-request accept
+        tcp dport 22 ct state new limit rate 5/minute accept
+        tcp dport { 80, 443 } accept
+        log prefix "INPUT DROP: " drop
+    }
+    chain forward { type filter hook forward priority 0; policy drop; }
+    chain output  { type filter hook output  priority 0; policy accept; }
+}
+
+table nat {
+    chain prerouting  { type nat hook prerouting  priority -100; }
+    chain postrouting { type nat hook postrouting priority  100;
+        oif eth0 masquerade
+    }
+}
+```
+
+## Saving and Loading
+
+```bash
+# Save current ruleset
+sudo nft list ruleset > /etc/nftables.conf
+
+# Load from file
+sudo nft -f /etc/nftables.conf
+
+# Enable service (auto-loads at boot)
+sudo systemctl enable --now nftables
+sudo systemctl reload nftables
+```
 
 ---
 
-# 16. `ufw` — Uncomplicated Firewall
+# 17. `firewall-cmd` — Firewalld CLI (RHEL/CentOS/Fedora)
+
+## Commands
+
+```bash
+# Status
+sudo firewall-cmd --state
+sudo firewall-cmd --get-active-zones
+sudo firewall-cmd --get-zones
+sudo firewall-cmd --get-default-zone
+sudo firewall-cmd --list-all
+sudo firewall-cmd --list-all-zones
+
+# Zone management
+sudo firewall-cmd --set-default-zone=public
+sudo firewall-cmd --zone=public --list-all
+sudo firewall-cmd --zone=trusted --add-interface=eth1
+
+# Services
+sudo firewall-cmd --list-services
+sudo firewall-cmd --get-services                        # All available services
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --permanent --remove-service=http
+sudo firewall-cmd --permanent --zone=public --add-service=ssh
+
+# Ports
+sudo firewall-cmd --permanent --add-port=8080/tcp
+sudo firewall-cmd --permanent --add-port=5000-5100/tcp
+sudo firewall-cmd --permanent --remove-port=8080/tcp
+sudo firewall-cmd --list-ports
+
+# Rich rules (complex rules)
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.1.0/24" service name="ssh" accept'
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.5" drop'
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.1.100" port protocol="tcp" port="3306" accept'
+
+# Port forwarding
+sudo firewall-cmd --permanent --add-forward-port=port=80:proto=tcp:toport=8080
+sudo firewall-cmd --permanent --add-forward-port=port=80:proto=tcp:toaddr=192.168.1.100:toport=80
+
+# Masquerading (NAT)
+sudo firewall-cmd --permanent --add-masquerade
+sudo firewall-cmd --permanent --remove-masquerade
+
+# Direct rules (raw iptables)
+sudo firewall-cmd --direct --add-rule ipv4 filter INPUT 0 -p tcp --dport 9000 -j ACCEPT
+
+# ICMP
+sudo firewall-cmd --permanent --add-icmp-block=echo-reply
+sudo firewall-cmd --permanent --remove-icmp-block=echo-reply
+
+# Reload
+sudo firewall-cmd --reload
+
+# Runtime vs permanent
+# Without --permanent: applies immediately but lost on reload
+# With --permanent: saved but requires --reload to take effect
+```
+
+---
+
+# 18. `ufw` — Uncomplicated Firewall
 
 A user-friendly frontend for `iptables`, commonly used on Ubuntu/Debian.
 
@@ -3428,69 +3707,649 @@ sudo ufw route allow in on eth0 out on eth1 to 10.0.0.0/24
 
 ---
 
-# 17. `firewall-cmd` — Firewalld CLI (RHEL/CentOS/Fedora)
+# 19. `ifconfig` — Interface Configuration (Legacy)
 
-## Commands
+`ifconfig` is the classic tool for configuring network interfaces, part of `net-tools`. It has been **replaced by `ip addr` and `ip link`** on all modern Linux systems and may not be installed by default.
+
+## Installation
 
 ```bash
-# Status
-sudo firewall-cmd --state
-sudo firewall-cmd --get-active-zones
-sudo firewall-cmd --get-zones
-sudo firewall-cmd --get-default-zone
-sudo firewall-cmd --list-all
-sudo firewall-cmd --list-all-zones
+sudo apt install net-tools          # Debian/Ubuntu
+sudo dnf install net-tools          # RHEL/Fedora
+```
 
-# Zone management
-sudo firewall-cmd --set-default-zone=public
-sudo firewall-cmd --zone=public --list-all
-sudo firewall-cmd --zone=trusted --add-interface=eth1
+## Viewing Interfaces
 
-# Services
-sudo firewall-cmd --list-services
-sudo firewall-cmd --get-services                        # All available services
-sudo firewall-cmd --permanent --add-service=http
-sudo firewall-cmd --permanent --add-service=https
-sudo firewall-cmd --permanent --remove-service=http
-sudo firewall-cmd --permanent --zone=public --add-service=ssh
+```bash
+# Show all active (UP) interfaces
+ifconfig
 
-# Ports
-sudo firewall-cmd --permanent --add-port=8080/tcp
-sudo firewall-cmd --permanent --add-port=5000-5100/tcp
-sudo firewall-cmd --permanent --remove-port=8080/tcp
-sudo firewall-cmd --list-ports
+# Show ALL interfaces including down
+ifconfig -a
 
-# Rich rules (complex rules)
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.1.0/24" service name="ssh" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.5" drop'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.1.100" port protocol="tcp" port="3306" accept'
+# Show a specific interface
+ifconfig eth0
 
-# Port forwarding
-sudo firewall-cmd --permanent --add-forward-port=port=80:proto=tcp:toport=8080
-sudo firewall-cmd --permanent --add-forward-port=port=80:proto=tcp:toaddr=192.168.1.100:toport=80
+# Show statistics (errors, drops)
+ifconfig -v eth0
 
-# Masquerading (NAT)
-sudo firewall-cmd --permanent --add-masquerade
-sudo firewall-cmd --permanent --remove-masquerade
+# Short summary table
+ifconfig -s
+```
 
-# Direct rules (raw iptables)
-sudo firewall-cmd --direct --add-rule ipv4 filter INPUT 0 -p tcp --dport 9000 -j ACCEPT
+### Reading ifconfig Output
 
-# ICMP
-sudo firewall-cmd --permanent --add-icmp-block=echo-reply
-sudo firewall-cmd --permanent --remove-icmp-block=echo-reply
+```
+eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+      inet 192.168.1.100  netmask 255.255.255.0  broadcast 192.168.1.255
+      inet6 fe80::250:56ff:fe9b:1234  prefixlen 64  scopeid 0x20<link>
+      ether 00:50:56:9b:12:34  txqueuelen 1000  (Ethernet)
+      RX packets 12345  bytes 10485760 (10.0 MiB)
+      RX errors 0  dropped 0  overruns 0  frame 0
+      TX packets 8765  bytes 7340032 (7.0 MiB)
+      TX errors 0  dropped 0  overruns 0  carrier 0  collisions 0
+```
 
-# Reload
-sudo firewall-cmd --reload
+| Field | Meaning |
+|-------|---------|
+| `flags` | Interface state (UP, BROADCAST, RUNNING, MULTICAST) |
+| `mtu` | Maximum Transmission Unit |
+| `inet` | IPv4 address |
+| `netmask` | Subnet mask |
+| `broadcast` | Broadcast address |
+| `inet6` | IPv6 address |
+| `ether` | MAC address |
+| `RX/TX packets` | Received/sent packet counts |
+| `errors` | Error count (CRC, frame, etc.) |
+| `dropped` | Dropped packets (buffer overflow) |
 
-# Runtime vs permanent
-# Without --permanent: applies immediately but lost on reload
-# With --permanent: saved but requires --reload to take effect
+## Configuring Interfaces
+
+```bash
+# Assign IPv4 address
+sudo ifconfig eth0 192.168.1.100 netmask 255.255.255.0
+
+# Assign with explicit broadcast
+sudo ifconfig eth0 192.168.1.100 netmask 255.255.255.0 broadcast 192.168.1.255
+
+# Add an IPv6 address
+sudo ifconfig eth0 add fe80::1/64
+
+# Remove an IPv6 address
+sudo ifconfig eth0 del fe80::1/64
+
+# Bring interface UP
+sudo ifconfig eth0 up
+
+# Bring interface DOWN
+sudo ifconfig eth0 down
+
+# Change MTU
+sudo ifconfig eth0 mtu 9000
+
+# Change MAC address (interface must be down first)
+sudo ifconfig eth0 down
+sudo ifconfig eth0 hw ether 00:11:22:33:44:55
+sudo ifconfig eth0 up
+
+# Enable promiscuous mode
+sudo ifconfig eth0 promisc
+
+# Disable promiscuous mode
+sudo ifconfig eth0 -promisc
+
+# Disable ARP
+sudo ifconfig eth0 -arp
+
+# Create virtual alias (secondary IP)
+sudo ifconfig eth0:0 10.0.0.1 netmask 255.255.255.0
+sudo ifconfig eth0:1 10.0.0.2 netmask 255.255.255.0
+
+# Set transmit queue length
+sudo ifconfig eth0 txqueuelen 2000
+```
+
+## Modern Equivalents (prefer these)
+
+| `ifconfig` | `ip` equivalent |
+|------------|-----------------|
+| `ifconfig` | `ip -br addr show` |
+| `ifconfig -a` | `ip addr show` |
+| `ifconfig eth0 192.168.1.1/24` | `ip addr add 192.168.1.1/24 dev eth0` |
+| `ifconfig eth0 up` | `ip link set eth0 up` |
+| `ifconfig eth0 down` | `ip link set eth0 down` |
+| `ifconfig eth0 mtu 9000` | `ip link set eth0 mtu 9000` |
+| `ifconfig eth0 hw ether XX:XX` | `ip link set eth0 address XX:XX` |
+| `ifconfig eth0 promisc` | `ip link set eth0 promisc on` |
+
+---
+
+
+
+# 20. `route` — Routing Table Management (Legacy)
+
+The `route` command displays and modifies the IP routing table. It has been **replaced by `ip route`** on modern Linux systems and is part of the `net-tools` package.
+
+## Installation
+
+```bash
+sudo apt install net-tools          # Debian/Ubuntu
+sudo dnf install net-tools          # RHEL/Fedora
+```
+
+## Viewing the Routing Table
+
+```bash
+# Show routing table (with hostname resolution)
+route
+
+# Show numeric (no DNS, faster and clearer)
+route -n
+
+# Show IPv6 routing table
+route -6 -n
+
+# Extended format
+route -e -n
+```
+
+### Reading `route -n` Output
+
+```
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         192.168.1.1     0.0.0.0         UG    100    0        0 eth0
+192.168.1.0     0.0.0.0         255.255.255.0   U     100    0        0 eth0
+127.0.0.0       0.0.0.0         255.0.0.0       U     0      0        0 lo
+```
+
+| Flag | Meaning |
+|------|---------|
+| `U` | Route is Up |
+| `G` | Uses a Gateway |
+| `H` | Host route (single IP) |
+| `R` | Reinstated by routing daemon |
+| `D` | Dynamically installed |
+| `M` | Modified by routing daemon |
+| `!` | Reject route |
+
+## Adding Routes
+
+```bash
+# Add default gateway
+sudo route add default gw 192.168.1.1
+
+# Add default gateway via specific interface
+sudo route add default gw 192.168.1.1 dev eth0
+
+# Add a network route
+sudo route add -net 10.0.0.0/8 gw 192.168.1.254
+
+# Add a network route via interface (no gateway)
+sudo route add -net 192.168.2.0/24 dev eth1
+
+# Add a host route (specific IP)
+sudo route add -host 203.0.113.1 gw 192.168.1.254
+
+# Add a reject (blackhole) route
+sudo route add -net 10.0.0.0/8 reject
+```
+
+## Deleting Routes
+
+```bash
+# Delete the default gateway
+sudo route del default
+
+# Delete default via specific gateway
+sudo route del default gw 192.168.1.1
+
+# Delete a network route
+sudo route del -net 10.0.0.0/8
+
+# Delete a host route
+sudo route del -host 203.0.113.1
+```
+
+## Modern Equivalents (prefer these)
+
+| `route` | `ip route` equivalent |
+|---------|----------------------|
+| `route -n` | `ip route show` |
+| `route add default gw 1.2.3.4` | `ip route add default via 1.2.3.4` |
+| `route add -net 10.0/8 gw 1.2.3.4` | `ip route add 10.0.0.0/8 via 1.2.3.4` |
+| `route del default` | `ip route del default` |
+| `route del -net 10.0/8` | `ip route del 10.0.0.0/8` |
+
+---
+
+
+
+# 21. `arp` — ARP Cache Management (Legacy)
+
+The `arp` command manages the kernel ARP cache — the table that maps IPv4 addresses to MAC addresses. It has been **replaced by `ip neigh`** on modern Linux and is part of `net-tools`.
+
+## Installation
+
+```bash
+sudo apt install net-tools          # Debian/Ubuntu
+sudo dnf install net-tools          # RHEL/Fedora
+```
+
+## Viewing the ARP Cache
+
+```bash
+# Show ARP cache (with name resolution)
+arp
+
+# Show numeric (no DNS, clearer)
+arp -n
+
+# Show for a specific interface
+arp -n -i eth0
+
+# Show verbose output
+arp -v -n
+
+# Show ALL entries including incomplete
+arp -a -n
+
+# Show entry for a specific host
+arp -n 192.168.1.1
+```
+
+### Reading `arp -n` Output
+
+```
+Address          HWtype  HWaddress           Flags Mask  Iface
+192.168.1.1      ether   00:11:22:33:44:55   C           eth0
+192.168.1.50     ether   aa:bb:cc:dd:ee:ff   C           eth0
+```
+
+| Flag | Meaning |
+|------|---------|
+| `C` | Complete (resolved) |
+| `M` | Permanent (static) |
+| `P` | Published (proxy ARP) |
+
+## Managing ARP Entries
+
+```bash
+# Add a static ARP entry
+sudo arp -s 192.168.1.50 00:11:22:33:44:55
+
+# Add static entry for a specific interface
+sudo arp -s 192.168.1.50 00:11:22:33:44:55 -i eth0
+
+# Delete an ARP entry
+sudo arp -d 192.168.1.50
+
+# Delete entry on a specific interface
+sudo arp -d 192.168.1.50 -i eth0
+
+# Set a proxy ARP entry
+sudo arp -s 192.168.2.1 00:11:22:33:44:55 pub
+
+# Load ARP entries from /etc/ethers
+sudo arp -f /etc/ethers
+```
+
+## Modern Equivalents (prefer these)
+
+| `arp` | `ip neigh` equivalent |
+|-------|-----------------------|
+| `arp -n` | `ip neigh show` |
+| `arp -n -i eth0` | `ip neigh show dev eth0` |
+| `arp -s 1.2.3.4 aa:bb:...` | `ip neigh add 1.2.3.4 lladdr aa:bb:... dev eth0 nud permanent` |
+| `arp -d 1.2.3.4` | `ip neigh del 1.2.3.4 dev eth0` |
+
+---
+
+
+
+# 22. `ip neigh` — ARP/NDP Neighbor Management
+
+`ip neigh` manages the kernel neighbor table — IPv4 ARP and IPv6 NDP (Neighbor Discovery Protocol) entries. It is the modern replacement for the `arp` command.
+
+## Viewing Neighbor Entries
+
+```bash
+# Show all neighbor entries
+ip neigh show
+ip n             # shorthand
+
+# IPv4 only (ARP cache)
+ip -4 neigh show
+
+# IPv6 only (NDP cache)
+ip -6 neigh show
+
+# For a specific interface
+ip neigh show dev eth0
+
+# For a specific IP
+ip neigh show 192.168.1.1
+
+# Brief format
+ip -br neigh show
+
+# JSON output
+ip -j neigh show
+
+# Only REACHABLE entries
+ip neigh show nud reachable
+
+# Only STALE entries
+ip neigh show nud stale
+```
+
+### Neighbor States
+
+| State | Meaning |
+|-------|---------|
+| `REACHABLE` | Recently confirmed reachable |
+| `STALE` | Entry may be expired; will verify on next use |
+| `DELAY` | Waiting before probing |
+| `PROBE` | Actively sending ARP/NS packets |
+| `FAILED` | Resolution failed |
+| `PERMANENT` | Statically configured, never expires |
+| `NOARP` | No ARP needed (point-to-point, etc.) |
+| `INCOMPLETE` | Resolution pending |
+
+## Managing Entries
+
+```bash
+# Add a permanent (static) ARP entry
+sudo ip neigh add 192.168.1.50 lladdr 00:11:22:33:44:55 dev eth0 nud permanent
+
+# Add a reachable entry (subject to timeout)
+sudo ip neigh add 192.168.1.50 lladdr 00:11:22:33:44:55 dev eth0 nud reachable
+
+# Change an existing entry
+sudo ip neigh change 192.168.1.50 lladdr aa:bb:cc:dd:ee:ff dev eth0
+
+# Replace (add or update)
+sudo ip neigh replace 192.168.1.50 lladdr 00:11:22:33:44:55 dev eth0 nud permanent
+
+# Delete a specific entry
+sudo ip neigh del 192.168.1.50 dev eth0
+
+# Flush all entries on an interface
+sudo ip neigh flush dev eth0
+
+# Flush all STALE entries system-wide
+sudo ip neigh flush nud stale
+
+# Proxy neighbor entry
+sudo ip neigh add proxy 192.168.2.100 dev eth0
+sudo ip neigh del proxy 192.168.2.100 dev eth0
+```
+
+## IPv6 Neighbor Discovery (NDP)
+
+```bash
+# Show IPv6 neighbors
+ip -6 neigh show
+
+# Add static IPv6 neighbor
+sudo ip -6 neigh add 2001:db8::1 lladdr 00:11:22:33:44:55 dev eth0 nud permanent
+
+# Delete IPv6 neighbor
+sudo ip -6 neigh del 2001:db8::1 dev eth0
+```
+
+## Monitor Events
+
+```bash
+# Watch neighbor changes in real time
+ip monitor neigh
+```
+
+## Tuning ARP Cache (sysctl)
+
+```bash
+# Increase ARP cache size (large networks)
+sudo sysctl -w net.ipv4.neigh.default.gc_thresh1=1024
+sudo sysctl -w net.ipv4.neigh.default.gc_thresh2=2048
+sudo sysctl -w net.ipv4.neigh.default.gc_thresh3=4096
+
+# Enable proxy ARP on an interface
+sudo sysctl -w net.ipv4.conf.eth0.proxy_arp=1
+
+# Enable ARP filtering (anti-spoofing)
+sudo sysctl -w net.ipv4.conf.all.arp_filter=1
 ```
 
 ---
 
-# 18. `ssh` — Secure Shell
+
+
+# 23. `ethtool` — NIC Hardware Settings
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| (no flag) | Show NIC settings |
+| `-i` | Show driver info |
+| `-S` | Show NIC statistics |
+| `-a` | Show pause parameters |
+| `-A` | Change pause parameters |
+| `-c` | Show coalesce settings |
+| `-C` | Change coalesce settings |
+| `-g` | Show ring buffer sizes |
+| `-G` | Change ring buffer sizes |
+| `-k` | Show offload settings |
+| `-K` | Change offload settings |
+| `-l` | Show channel count |
+| `-L` | Change channel count |
+| `-m` | Show transceiver module info |
+| `-n` / `--show-nfc` | Show network flow classification rules |
+| `-p` | Identify interface (blink LED) |
+| `-r` | Restart auto-negotiation |
+| `-s` | Change NIC settings |
+| `-t` | Self-test |
+| `-T` | Show time stamping capabilities |
+| `--show-eee` | Show EEE (Energy Efficient Ethernet) |
+| `--set-eee` | Change EEE settings |
+| `--show-fec` | Show FEC (Forward Error Correction) |
+| `--set-fec` | Change FEC settings |
+| `--show-priv-flags` | Show private flags |
+| `--set-priv-flags` | Set private flags |
+
+## Examples
+
+```bash
+# Show NIC settings
+sudo ethtool eth0
+
+# Show driver info
+sudo ethtool -i eth0
+
+# Show statistics
+sudo ethtool -S eth0
+
+# Set speed/duplex
+sudo ethtool -s eth0 speed 1000 duplex full autoneg off
+
+# Show offload settings
+sudo ethtool -k eth0
+
+# Disable TCP segmentation offload
+sudo ethtool -K eth0 tso off
+
+# Enable generic receive offload
+sudo ethtool -K eth0 gro on
+
+# Show ring buffer sizes
+sudo ethtool -g eth0
+
+# Increase ring buffer
+sudo ethtool -G eth0 rx 4096 tx 4096
+
+# Blink NIC LED (identify)
+sudo ethtool -p eth0 5                  # Blink for 5 seconds
+
+# Show pause frames
+sudo ethtool -a eth0
+
+# Restart auto-negotiation
+sudo ethtool -r eth0
+
+# Show channel count
+sudo ethtool -l eth0
+
+# Show coalesce settings
+sudo ethtool -c eth0
+
+# Run self-test
+sudo ethtool -t eth0
+```
+
+---
+
+# 24. `nmcli` — NetworkManager CLI
+
+## Main Commands
+
+```bash
+# General status
+nmcli general status
+nmcli general hostname
+nmcli general permissions
+nmcli general logging
+
+# Networking
+nmcli networking on
+nmcli networking off
+nmcli networking connectivity
+
+# Device management
+nmcli device status
+nmcli device show
+nmcli device show eth0
+nmcli device connect eth0
+nmcli device disconnect eth0
+nmcli device wifi list
+nmcli device wifi rescan
+nmcli device wifi connect "SSID" password "PASS"
+nmcli device wifi hotspot ssid "MyHotspot" password "pass1234"
+
+# Connection management
+nmcli connection show
+nmcli connection show --active
+nmcli connection show "My Connection"
+nmcli connection up "My Connection"
+nmcli connection down "My Connection"
+nmcli connection delete "My Connection"
+nmcli connection reload
+nmcli connection load /etc/NetworkManager/system-connections/myconn.nmconnection
+
+# Create connections
+nmcli connection add type ethernet con-name "static" ifname eth0 \
+  ipv4.addresses 192.168.1.100/24 \
+  ipv4.gateway 192.168.1.1 \
+  ipv4.dns "8.8.8.8 8.8.4.4" \
+  ipv4.method manual
+
+nmcli connection add type wifi con-name "home-wifi" ifname wlan0 \
+  ssid "MyNetwork" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "password"
+
+nmcli connection add type bond con-name "bond0" ifname bond0 \
+  bond.options "mode=802.3ad,miimon=100"
+
+nmcli connection add type bridge con-name "br0" ifname br0
+
+nmcli connection add type vlan con-name "vlan100" ifname eth0.100 \
+  dev eth0 id 100
+
+# Modify connections
+nmcli connection modify "My Connection" ipv4.dns "1.1.1.1"
+nmcli connection modify "My Connection" +ipv4.dns "8.8.8.8"
+nmcli connection modify "My Connection" ipv4.addresses "192.168.1.200/24"
+nmcli connection modify "My Connection" connection.autoconnect yes
+
+# Monitor
+nmcli monitor
+```
+
+---
+
+# 25. `nmtui` — NetworkManager Text UI
+
+`nmtui` is an interactive, ncurses-based terminal menu for managing network connections. It provides a guided interface ideal for servers without a GUI or users who prefer menus over CLI commands.
+
+## Launching
+
+```bash
+nmtui                  # Main menu
+nmtui edit             # Jump to Edit Connections
+nmtui connect          # Jump to Activate a Connection
+nmtui hostname         # Set the system hostname
+```
+
+## Menu Structure
+
+```
+┌──────────────────────────────────────────┐
+│ NetworkManager TUI                        │
+│                                           │
+│  Edit a connection                        │
+│  Activate a connection                    │
+│  Set system hostname                      │
+│                              <Quit>       │
+└──────────────────────────────────────────┘
+```
+
+### Edit a Connection
+Configure IP addresses, DNS, gateway, routes; create/delete connections; set up Wi-Fi, VPN, bond, bridge, VLAN.
+
+### Activate a Connection
+Toggle connections on/off. Active connections are marked with `*`.
+
+### Set System Hostname
+Permanently set the hostname (equivalent to `hostnamectl set-hostname`).
+
+## Navigation Keys
+
+| Key | Action |
+|-----|--------|
+| Arrow keys | Move between items |
+| Tab / Shift+Tab | Next / previous field |
+| Enter | Select / confirm |
+| Space | Toggle checkbox |
+| Esc | Cancel / go back |
+| `<OK>` or F10 | Save and exit |
+
+## Common Tasks
+
+### Configure Static IP
+1. Run `nmtui` → **Edit a connection**
+2. Select interface → change **IPv4 CONFIGURATION** from `Automatic` to `Manual`
+3. Add address (e.g., `192.168.1.100/24`), Gateway (`192.168.1.1`), DNS
+4. `<OK>` → **Activate a connection** → reactivate the connection
+
+### Add a Wi-Fi Connection
+1. Run `nmtui` → **Edit a connection** → **Add** → **Wi-Fi**
+2. Enter SSID, security type, password → `<OK>`
+
+### Remove a Connection
+1. Run `nmtui` → **Edit a connection**
+2. Select connection → **Delete** → confirm
+
+## nmtui vs nmcli
+
+| | nmtui | nmcli |
+|--|-------|-------|
+| Interface | Interactive menus | Command line |
+| Scripting | Not suitable | Ideal |
+| Remote use | Works in any terminal | Preferred for automation |
+
+---
+
+
+
+# 26. `ssh` — Secure Shell
 
 ## Syntax
 
@@ -3537,8 +4396,8 @@ ssh [OPTIONS] [USER@]HOST [COMMAND]
 | `-O COMMAND` | Control multiplex master: `check`, `forward`, `cancel`, `exit`, `stop` |
 | `-4` | Force IPv4 |
 | `-6` | Force IPv6 |
-| `-1` | ~~Force protocol version 1~~ **Removed in OpenSSH 7.6+** |
-| `-2` | ~~Force protocol version 2~~ **Removed in OpenSSH 7.6+** (SSHv2 is now the only version) |
+| `-1` | Force protocol version 1 (deprecated) |
+| `-2` | Force protocol version 2 |
 
 ## SSH Config Options (`-o` or `~/.ssh/config`)
 
@@ -3689,7 +4548,7 @@ Host *
 
 ---
 
-# 19. `scp` — Secure Copy
+# 27. `scp` — Secure Copy
 
 ## Syntax
 
@@ -3758,7 +4617,7 @@ scp -C largefile.txt user@remote:/tmp/
 
 ---
 
-# 20. `sftp` — Secure FTP
+# 28. `sftp` — Secure FTP
 
 Interactive secure file transfer over SSH.
 
@@ -3824,7 +4683,7 @@ sftp [OPTIONS] [USER@]HOST[:PATH]
 
 ---
 
-# 21. `rsync` — Remote File Synchronization
+# 29. `rsync` — Remote File Synchronization
 
 ## Syntax
 
@@ -3957,7 +4816,7 @@ rsync -avz --stats ./mydir/ user@remote:/backup/
 
 ---
 
-# 22. `nc` / `netcat` — Network Swiss Army Knife
+# 30. `nc` / `netcat` — Network Swiss Army Knife
 
 ## Syntax
 
@@ -4047,7 +4906,1322 @@ nc -l -p 4444 -e /bin/bash                         # Dangerous!
 
 ---
 
-# 23. `iperf3` — Network Performance Testing
+# 31. `ncat` — Modern Netcat (from Nmap)
+
+`ncat` is Nmap's reimplementation of netcat with added features: SSL/TLS support, IPv6, connection brokering, and access control. It is bundled with `nmap`.
+
+## Installation
+
+```bash
+sudo apt install ncat               # Debian/Ubuntu
+sudo dnf install nmap               # RHEL/Fedora (includes ncat)
+```
+
+## Syntax
+
+```bash
+ncat [options] [hostname] [port]
+```
+
+## Basic Connection Testing
+
+```bash
+# Test if a TCP port is open
+ncat -zv 192.168.1.1 22
+
+# Test UDP port
+ncat -zuv 192.168.1.1 53
+
+# Connect to a service (interactive)
+ncat example.com 80
+
+# Connect with timeout (5 seconds)
+ncat --send-only -w 5 192.168.1.1 80
+
+# Banner grabbing
+echo "" | ncat 192.168.1.1 22
+```
+
+## Server Mode (Listen)
+
+```bash
+# Listen on a port
+ncat -l 9090
+
+# Listen and keep open for multiple connections
+ncat -lk 9090
+
+# Listen on specific address
+ncat -l 127.0.0.1 9090
+
+# Execute a command on each connection
+ncat -l 9090 -e /bin/bash          # TCP shell (for testing only)
+
+# Listen on UDP
+ncat -lu 9090
+```
+
+## File Transfer
+
+```bash
+# Send file (receiver listens first)
+ncat -l 9090 > received_file.txt   # Receiver
+ncat 192.168.1.2 9090 < send_file.txt  # Sender
+
+# Transfer with progress (pipe through pv)
+ncat -l 9090 > output.tar.gz       # Receiver
+tar czf - /data | ncat 192.168.1.2 9090  # Sender
+```
+
+## SSL/TLS (ncat's Key Advantage over nc)
+
+```bash
+# SSL server
+ncat -l 9090 --ssl
+
+# SSL client
+ncat --ssl 192.168.1.1 9090
+
+# SSL with certificates
+ncat -l 9090 --ssl --ssl-cert server.crt --ssl-key server.key
+
+# SSL client with certificate verification
+ncat --ssl --ssl-verify --ssl-trustfile ca.crt 192.168.1.1 9090
+
+# Quick HTTPS header grab
+ncat --ssl example.com 443 <<< "HEAD / HTTP/1.0\nHost: example.com\n\n"
+```
+
+## Connection Brokering
+
+```bash
+# Broker: two clients connect to this host and talk to each other
+ncat -l --broker 9090
+
+# Chat server (broadcast to all connected clients)
+ncat -l --chat 9090
+```
+
+## Access Control
+
+```bash
+# Allow connections only from specific IPs
+ncat -l 9090 --allow 192.168.1.0/24
+
+# Deny specific IPs
+ncat -l 9090 --deny 10.0.0.5
+
+# Allow list from file
+ncat -l 9090 --allowfile /etc/ncat.allow
+```
+
+## Proxy and Tunneling
+
+```bash
+# HTTP proxy connect through proxy
+ncat --proxy 192.168.1.1:8080 --proxy-type http example.com 80
+
+# SOCKS5 proxy
+ncat --proxy 127.0.0.1:1080 --proxy-type socks5 example.com 80
+
+# Port forwarding (forward local 8080 to remote 80)
+ncat -l 8080 -c "ncat example.com 80"
+```
+
+## IPv6
+
+```bash
+# Connect to IPv6 host
+ncat -6 2001:db8::1 80
+
+# Listen on IPv6
+ncat -6 -l 9090
+
+# Listen on both IPv4 and IPv6
+ncat -46 -l 9090
+```
+
+---
+
+
+
+# 32. `socat` — Multipurpose Bidirectional Relay
+
+`socat` (SOcket CAT) creates bidirectional data channels between virtually any two endpoints: TCP, UDP, Unix sockets, files, processes, serial ports, TLS, and more. It is the most powerful of the netcat-family tools.
+
+## Installation
+
+```bash
+sudo apt install socat              # Debian/Ubuntu
+sudo dnf install socat              # RHEL/Fedora
+```
+
+## Syntax
+
+```bash
+socat [options] ADDRESS1 ADDRESS2
+```
+
+Data flows bidirectionally between ADDRESS1 and ADDRESS2. Each address uses the format `TYPE:params` or a keyword.
+
+## Common Address Types
+
+| Address | Description |
+|---------|-------------|
+| `TCP:host:port` | TCP client connection |
+| `TCP-LISTEN:port` | TCP server |
+| `UDP:host:port` | UDP send |
+| `UDP-LISTEN:port` | UDP server |
+| `UNIX-CONNECT:path` | Unix domain socket client |
+| `UNIX-LISTEN:path` | Unix domain socket server |
+| `OPENSSL:host:port` | TLS client |
+| `OPENSSL-LISTEN:port` | TLS server |
+| `FILE:path` | Regular file |
+| `STDIN` / `STDOUT` | Standard I/O |
+| `EXEC:cmd` | Execute a command |
+| `PTY` | Pseudo-terminal |
+| `PIPE:path` | Named pipe |
+| `GOPEN:path` | Open any file |
+
+## Basic Connections
+
+```bash
+# TCP client (interactive)
+socat - TCP:example.com:80
+
+# TCP server (echo back to client)
+socat TCP-LISTEN:9090,reuseaddr,fork STDIN
+
+# UDP client
+socat - UDP:192.168.1.1:514
+
+# UDP server
+socat UDP-LISTEN:514,reuseaddr -
+```
+
+## Port Forwarding
+
+```bash
+# Forward local port 8080 to remote host:port
+socat TCP-LISTEN:8080,reuseaddr,fork TCP:192.168.1.10:80
+
+# Forward with specific bind address
+socat TCP-LISTEN:8080,bind=127.0.0.1,reuseaddr,fork TCP:10.0.0.1:80
+
+# UDP port forwarding
+socat UDP-LISTEN:5353,reuseaddr,fork UDP:8.8.8.8:53
+```
+
+## File Transfer
+
+```bash
+# Send a file
+socat TCP-LISTEN:9090,reuseaddr - > received.tar.gz  # Receiver (listens first)
+socat - TCP:192.168.1.2:9090 < send.tar.gz            # Sender
+
+# Transfer with progress
+pv file.tar.gz | socat - TCP:192.168.1.2:9090        # Sender with progress
+```
+
+## Unix Socket Proxy
+
+```bash
+# Proxy Unix socket to TCP (e.g., expose Docker socket over TCP — be careful)
+socat TCP-LISTEN:2375,reuseaddr,fork UNIX-CONNECT:/var/run/docker.sock
+
+# Proxy TCP to Unix socket
+socat UNIX-LISTEN:/tmp/my.sock,reuseaddr,fork TCP:192.168.1.1:9090
+```
+
+## TLS / SSL
+
+```bash
+# TLS server
+socat OPENSSL-LISTEN:4443,reuseaddr,fork,cert=server.pem,cafile=ca.pem EXEC:/bin/bash
+
+# TLS client
+socat STDIN OPENSSL:example.com:443,verify=1,cafile=/etc/ssl/certs/ca-certificates.crt
+
+# Generate self-signed cert for testing
+openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 365 -out server.crt
+cat server.key server.crt > server.pem
+socat OPENSSL-LISTEN:4443,cert=server.pem,verify=0 STDOUT
+```
+
+## Shell and Process Piping
+
+```bash
+# Remote shell server (TCP → bash — for testing only)
+socat TCP-LISTEN:9090,reuseaddr,fork EXEC:/bin/bash,pty,setsid,ctty
+
+# Execute a command and send output to remote
+socat EXEC:"ps aux" TCP:192.168.1.1:9090
+
+# Pipe between two processes
+socat EXEC:"prog1" EXEC:"prog2"
+```
+
+## Serial Port / PTY
+
+```bash
+# Connect to a serial port
+socat - /dev/ttyS0,raw,echo=0,crnl,b115200
+
+# Create a virtual serial port pair (for testing)
+socat -d -d PTY,link=/dev/ttyV0 PTY,link=/dev/ttyV1
+
+# Serial port to TCP gateway
+socat /dev/ttyS0,raw,b9600 TCP-LISTEN:2000,reuseaddr
+```
+
+## Debugging Options
+
+```bash
+-v            # Print data flowing in both directions (human-readable)
+-x            # Print data in hex
+-d            # Debug level 1
+-d -d         # Debug level 2 (more verbose)
+-d -d -d      # Maximum debug output
+
+# Example: watch HTTP request/response
+socat -v TCP-LISTEN:8080,reuseaddr,fork TCP:example.com:80
+```
+
+---
+
+
+
+# 33. `whois` — Domain Registration Lookup
+
+`whois` queries WHOIS databases for domain registration and IP allocation information.
+
+## Installation
+
+```bash
+sudo apt install whois              # Debian/Ubuntu
+sudo dnf install whois              # RHEL/Fedora
+```
+
+## Syntax
+
+```bash
+whois [options] QUERY
+```
+
+## Domain Lookups
+
+```bash
+# Domain registration information
+whois example.com
+
+# Show registrar, dates, nameservers, status
+whois google.com | grep -E "Registrar:|Creation Date:|Expiry Date:|Name Server:"
+
+# Check domain availability (look for "No match" or "NOT FOUND")
+whois somefunkyname123.com | grep -i "no match\|not found"
+
+# WHOIS for a ccTLD (country-code TLD)
+whois example.co.uk
+whois example.de
+
+# Query a specific WHOIS server
+whois -h whois.verisign-grs.com example.com
+
+# Show raw output without stripping comments
+whois -r example.com
+
+# Recursively follow referrals to authoritative server
+whois -R example.com
+```
+
+## IP Address Lookups
+
+```bash
+# Lookup IP owner and allocation
+whois 8.8.8.8
+
+# IP lookup via regional registry
+whois -h whois.arin.net 8.8.8.8         # ARIN (North America)
+whois -h whois.ripe.net 8.8.8.8         # RIPE (Europe, Middle East)
+whois -h whois.apnic.net 8.8.8.8        # APNIC (Asia-Pacific)
+whois -h whois.lacnic.net 8.8.8.8       # LACNIC (Latin America)
+whois -h whois.afrinic.net 8.8.8.8      # AFRINIC (Africa)
+
+# Get ASN (Autonomous System Number) info
+whois AS15169                            # Google's ASN
+whois -h whois.radb.net AS15169
+
+# Lookup an entire CIDR block
+whois 192.0.2.0/24
+```
+
+## Useful Filters
+
+```bash
+# Extract registrar info only
+whois example.com | grep -i "registrar"
+
+# Extract nameservers
+whois example.com | grep -i "name server"
+
+# Extract expiry date
+whois example.com | grep -iE "expir|expiry|expires"
+
+# Extract status
+whois example.com | grep -i "status"
+
+# Check for DNSSEC
+whois example.com | grep -i "dnssec"
+```
+
+## Key Fields in WHOIS Output
+
+| Field | Meaning |
+|-------|---------|
+| `Registrar` | Company that registered the domain |
+| `Creation Date` | When the domain was first registered |
+| `Updated Date` | Last modification date |
+| `Registry Expiry Date` | When registration expires |
+| `Name Server` | Authoritative DNS servers |
+| `Domain Status` | Current status (clientTransferProhibited, etc.) |
+| `Registrant` | Owner information (often redacted for privacy) |
+| `DNSSEC` | Whether DNSSEC is enabled |
+
+---
+
+
+
+# 34. `hostname` / `hostnamectl` — Hostname Management
+
+Linux uses two commands for hostname management: the legacy `hostname` (immediate, non-persistent) and the modern `hostnamectl` (persistent, systemd-based).
+
+## `hostname` — View and Temporarily Set Hostname
+
+```bash
+# Show current hostname
+hostname
+
+# Show fully qualified domain name (FQDN)
+hostname -f
+hostname --fqdn
+
+# Show short hostname (without domain)
+hostname -s
+
+# Show DNS domain name
+hostname -d
+
+# Show all IP addresses of the host
+hostname -I
+
+# Show primary IP address
+hostname -i
+
+# Temporarily set hostname (resets on reboot)
+sudo hostname newhostname
+
+# Set FQDN hostname temporarily
+sudo hostname newhostname.example.com
+```
+
+## `hostnamectl` — Persistent Hostname Management (systemd)
+
+```bash
+# Show full hostname status
+hostnamectl
+
+# Show only the static hostname
+hostnamectl hostname
+
+# Set static hostname (persists across reboots)
+sudo hostnamectl set-hostname newhostname
+
+# Set a pretty hostname (human-readable, can contain spaces)
+sudo hostnamectl set-hostname "My Server 01" --pretty
+
+# Set transient hostname (runtime only, overridden by DHCP)
+sudo hostnamectl set-hostname temp-name --transient
+
+# Clear pretty hostname
+sudo hostnamectl set-hostname "" --pretty
+```
+
+### hostnamectl Status Output
+
+```
+ Static hostname: server01.example.com
+ Pretty hostname: Production Server 01
+       Icon name: computer-server
+      Machine ID: a1b2c3d4e5f6...
+         Boot ID: f6e5d4c3b2a1...
+Operating System: Ubuntu 24.04 LTS
+          Kernel: Linux 6.8.0-36-generic
+    Architecture: x86-64
+```
+
+## Hostname Types
+
+| Type | Description | Persistence |
+|------|-------------|-------------|
+| **Static** | Set by admin, primary hostname | Permanent (in `/etc/hostname`) |
+| **Pretty** | Human-friendly, can have spaces/special chars | Permanent (in `/etc/machine-info`) |
+| **Transient** | Temporary, set by kernel/DHCP | Lost on reboot |
+
+## Configuration Files
+
+```bash
+# View /etc/hostname (static hostname)
+cat /etc/hostname
+
+# Edit hostname directly
+sudo nano /etc/hostname
+
+# /etc/hosts should also be updated for local resolution
+sudo nano /etc/hosts
+# Add or update: 127.0.1.1  newhostname.example.com  newhostname
+
+# /etc/machine-info contains pretty hostname
+cat /etc/machine-info
+
+# Verify hostname resolves
+getent hosts $(hostname)
+```
+
+## DHCP and Hostname
+
+```bash
+# Check if DHCP is overriding your hostname
+hostnamectl status | grep Transient
+
+# Prevent NetworkManager from changing hostname via DHCP
+# Edit /etc/NetworkManager/NetworkManager.conf:
+# [main]
+# hostname-mode=none
+```
+
+---
+
+
+
+# 35. `ipcalc` — IP Address Calculator
+
+`ipcalc` computes network information from an IP address and prefix or netmask. Essential for subnetting calculations.
+
+## Installation
+
+```bash
+sudo apt install ipcalc             # Debian/Ubuntu
+sudo dnf install ipcalc             # RHEL/Fedora
+```
+
+## Basic Usage
+
+```bash
+# Calculate network info from CIDR notation
+ipcalc 192.168.1.100/24
+
+# Using netmask instead of prefix
+ipcalc 192.168.1.100 255.255.255.0
+
+# IPv6 calculation
+ipcalc 2001:db8::1/48
+```
+
+### Reading ipcalc Output
+
+```
+Address:   192.168.1.100        11000000.10101000.00000001. 01100100
+Netmask:   255.255.255.0 = 24   11111111.11111111.11111111. 00000000
+Wildcard:  0.0.0.255            00000000.00000000.00000000. 11111111
+=>
+Network:   192.168.1.0/24       11000000.10101000.00000001. 00000000
+HostMin:   192.168.1.1          11000000.10101000.00000001. 00000001
+HostMax:   192.168.1.254        11000000.10101000.00000001. 11111110
+Broadcast: 192.168.1.255        11000000.10101000.00000001. 11111111
+Hosts/Net: 254                   Class C, Private Internet
+```
+
+| Field | Description |
+|-------|-------------|
+| `Address` | The input IP address |
+| `Netmask` | Subnet mask with prefix length |
+| `Wildcard` | Inverse mask (used in ACLs/nmap) |
+| `Network` | Network address (first address in block) |
+| `HostMin` | First usable host address |
+| `HostMax` | Last usable host address |
+| `Broadcast` | Broadcast address (last in block) |
+| `Hosts/Net` | Number of usable host addresses |
+
+## Subnetting
+
+```bash
+# Split a network into subnets of specific sizes
+# Divide 192.168.1.0/24 into subnets for 200, 100, and 50 hosts
+ipcalc 192.168.1.0/24 -s 200 100 50
+
+# Request minimum subnets needed for N hosts
+ipcalc 10.0.0.0/8 -s 1000 500 250
+
+# Show deaggregate: all /26 subnets inside /24
+ipcalc 192.168.1.0/24 -b | head -20
+```
+
+## Output Formatting Options
+
+```bash
+# Show only the network address
+ipcalc -n 192.168.1.100/24
+# Output: 192.168.1.0
+
+# Show only the broadcast
+ipcalc -b 192.168.1.100/24
+# Output: 192.168.1.255
+
+# Show only the prefix length
+ipcalc -p 192.168.1.100 255.255.255.0
+# Output: 24
+
+# Show only the netmask
+ipcalc -m 192.168.1.100/24
+# Output: 255.255.255.0
+
+# Check if an address is valid
+ipcalc -c 192.168.1.100/24 ; echo $?   # 0=valid, 1=invalid
+
+# Show minimal output (no explanations)
+ipcalc -s 0 192.168.1.0/24
+
+# No color output
+ipcalc --nocolor 192.168.1.100/24
+```
+
+## Quick Reference: Common Prefix Lengths
+
+| Prefix | Netmask | Hosts | Usage |
+|--------|---------|-------|-------|
+| `/30` | 255.255.255.252 | 2 | Point-to-point links |
+| `/29` | 255.255.255.248 | 6 | Small segments |
+| `/28` | 255.255.255.240 | 14 | Small office |
+| `/27` | 255.255.255.224 | 30 | Small subnet |
+| `/26` | 255.255.255.192 | 62 | Medium subnet |
+| `/25` | 255.255.255.128 | 126 | Half a /24 |
+| `/24` | 255.255.255.0 | 254 | Standard LAN |
+| `/23` | 255.255.254.0 | 510 | |
+| `/22` | 255.255.252.0 | 1022 | |
+| `/16` | 255.255.0.0 | 65534 | Class B |
+| `/8` | 255.0.0.0 | 16M | Class A |
+
+---
+
+
+
+# 36. `lsof` — List Open Network Sockets
+
+`lsof` (List Open Files) lists all open files, including network sockets. It is one of the most powerful tools for finding which process is using a port or network connection.
+
+## Syntax
+
+```bash
+lsof [options] [names]
+```
+
+## Network-Specific Options
+
+```bash
+# Show ALL network connections (IPv4 and IPv6)
+sudo lsof -i
+
+# Show only IPv4
+sudo lsof -i 4
+
+# Show only IPv6
+sudo lsof -i 6
+
+# Show connections on a specific port
+sudo lsof -i :80
+sudo lsof -i :443
+
+# Show connections to a specific host
+sudo lsof -i @192.168.1.1
+
+# Show connections to host on a specific port
+sudo lsof -i @192.168.1.1:22
+
+# Show port range
+sudo lsof -i :1-1024
+
+# Show TCP connections only
+sudo lsof -i tcp
+
+# Show UDP connections only
+sudo lsof -i udp
+
+# Show only LISTENING sockets
+sudo lsof -iTCP -sTCP:LISTEN
+
+# Show only ESTABLISHED connections
+sudo lsof -iTCP -sTCP:ESTABLISHED
+
+# Show only CLOSE_WAIT
+sudo lsof -iTCP -sTCP:CLOSE_WAIT
+```
+
+## Process and User Filtering
+
+```bash
+# Show network connections for a specific PID
+sudo lsof -p 1234 -i
+
+# Show network connections for a specific process name
+sudo lsof -c nginx -i
+
+# Show connections for a specific user
+sudo lsof -u www-data -i
+
+# Show connections for all users except root
+sudo lsof -u ^root -i
+
+# Show connections for multiple PIDs
+sudo lsof -p 1234,5678 -i
+```
+
+## Output Control
+
+```bash
+# Numeric addresses and ports (no DNS resolution — faster)
+sudo lsof -i -P -n
+
+# Numeric ports only (resolve hosts)
+sudo lsof -i -P
+
+# Repeat every 2 seconds
+sudo lsof -i -r 2
+
+# Show only specific fields
+sudo lsof -i -F pcn      # Process ID, command, name only
+
+# One line per file (default is multi-line for some types)
+sudo lsof -i -l
+```
+
+### Reading lsof -i Output
+
+```
+COMMAND   PID   USER   FD   TYPE  DEVICE SIZE/OFF NODE NAME
+nginx     1234  root   6u  IPv4   12345      0t0  TCP  *:80 (LISTEN)
+sshd      5678  root   3u  IPv4   67890      0t0  TCP  0.0.0.0:22 (LISTEN)
+chrome    9012  user   45u IPv4  111111      0t0  TCP  192.168.1.100:54321->93.184.216.34:443 (ESTABLISHED)
+```
+
+| Column | Meaning |
+|--------|---------|
+| `COMMAND` | Process name |
+| `PID` | Process ID |
+| `USER` | User running the process |
+| `FD` | File descriptor (u=read+write) |
+| `TYPE` | IPv4, IPv6, unix, etc. |
+| `NAME` | Address:port → remote:port (state) |
+
+## Common Use Cases
+
+```bash
+# Who is listening on port 8080?
+sudo lsof -i :8080
+
+# What ports is a specific PID using?
+sudo lsof -p 1234 -i
+
+# Find process blocking a port before killing it
+sudo lsof -i :3000
+sudo kill -9 $(sudo lsof -ti :3000)
+
+# Show all open Unix domain sockets
+sudo lsof -U
+
+# Show all network activity for a process name
+sudo lsof -c sshd -i
+
+# Count connections by state
+sudo lsof -i TCP | awk '{print $10}' | sort | uniq -c | sort -rn
+```
+
+---
+
+
+
+# 37. `fuser` — Identify Processes Using Files or Sockets
+
+`fuser` identifies which processes are using files, directories, or network ports. It is part of the `psmisc` package.
+
+## Installation
+
+```bash
+sudo apt install psmisc             # Debian/Ubuntu
+sudo dnf install psmisc             # RHEL/Fedora
+```
+
+## Syntax
+
+```bash
+fuser [options] name
+```
+
+## Network Port Usage
+
+```bash
+# Find process using TCP port 80
+sudo fuser 80/tcp
+
+# Output: 80/tcp: 1234
+# This means PID 1234 is using TCP port 80
+
+# Verbose output (shows process details)
+sudo fuser -v 80/tcp
+
+# Find process using UDP port 53
+sudo fuser 53/udp
+
+# Check multiple ports at once
+sudo fuser 80/tcp 443/tcp 22/tcp
+
+# Find all processes using any TCP port (slow)
+sudo fuser -v -n tcp 0-65535 2>/dev/null
+
+# Check if a port is in use (exit code 0=yes, 1=no)
+sudo fuser 8080/tcp &>/dev/null && echo "Port in use" || echo "Port free"
+```
+
+## File and Directory Usage
+
+```bash
+# Find processes using a file
+fuser /var/log/syslog
+
+# Find processes using a directory (and all files within)
+fuser -m /var/log/
+
+# Find process using a Unix socket
+sudo fuser -v /var/run/docker.sock
+
+# Find what has a device/filesystem mounted
+fuser -m /dev/sda1
+
+# Find all processes using files under a path
+fuser -m -v /path/to/dir
+```
+
+## Verbose Output
+
+```bash
+sudo fuser -v 80/tcp
+
+# Output:
+#                      USER        PID ACCESS COMMAND
+# 80/tcp:              root       1234 F....  nginx
+#                      www-data   1235 F....  nginx
+```
+
+| ACCESS Code | Meaning |
+|-------------|---------|
+| `c` | Current directory |
+| `e` | Executable being run |
+| `f` | Open file (omitted in default output) |
+| `F` | Open file for writing |
+| `r` | Root directory |
+| `m` | mmap'd file or shared library |
+
+## Killing Processes
+
+```bash
+# Kill process using port 80
+sudo fuser -k 80/tcp
+
+# Kill with SIGTERM first (gentler)
+sudo fuser -k -TERM 80/tcp
+
+# Kill with a specific signal
+sudo fuser -k -HUP 80/tcp           # SIGHUP (reload config)
+sudo fuser -k -9 80/tcp             # SIGKILL (force kill)
+
+# Kill all processes using a directory (e.g., before unmounting)
+sudo fuser -k -m /mnt/data
+
+# Interactive kill (ask before each)
+sudo fuser -i -k 80/tcp
+```
+
+## Useful Combinations
+
+```bash
+# Find PID only (for scripting)
+sudo fuser 80/tcp 2>/dev/null
+
+# Get PID as a clean number
+PID=$(sudo fuser 3000/tcp 2>/dev/null | tr -d ' ')
+echo "Killing PID $PID"
+sudo kill -9 $PID
+
+# List all processes using network
+sudo fuser -v -n tcp 22 80 443 2>/dev/null
+```
+
+---
+
+
+
+# 38. `iftop` — Real-Time Bandwidth Monitor
+
+`iftop` displays real-time bandwidth usage on a network interface, showing the top connections by traffic volume. Think of it as `top` for network traffic.
+
+## Installation
+
+```bash
+sudo apt install iftop              # Debian/Ubuntu
+sudo dnf install iftop              # RHEL/Fedora
+```
+
+## Basic Usage
+
+```bash
+# Monitor default interface (requires root)
+sudo iftop
+
+# Monitor a specific interface
+sudo iftop -i eth0
+sudo iftop -i ens3
+
+# Run for 10 seconds then print summary and exit
+sudo iftop -t -s 10 -i eth0
+```
+
+## Options
+
+```bash
+# Do not resolve hostnames (numeric IPs, much faster)
+sudo iftop -n
+
+# Do not resolve port names (show port numbers)
+sudo iftop -N
+
+# Show port numbers
+sudo iftop -P
+
+# Show bytes instead of bits (default is bits/sec)
+sudo iftop -B
+
+# Apply a BPF filter (same syntax as tcpdump)
+sudo iftop -f "port 80 or port 443"
+sudo iftop -f "src net 192.168.1.0/24"
+sudo iftop -f "dst host 8.8.8.8"
+
+# Filter by network (show only traffic to/from this subnet)
+sudo iftop -F 192.168.1.0/24
+
+# Show IPv6 traffic
+sudo iftop -6
+
+# Use a specific pcap filter file
+sudo iftop -c ~/.iftoprc
+
+# Combine: specific interface, numeric, ports, bytes
+sudo iftop -i eth0 -n -N -P -B
+```
+
+## Interactive Keys (while iftop is running)
+
+| Key | Action |
+|-----|--------|
+| `h` | Toggle help |
+| `n` | Toggle DNS resolution |
+| `N` | Toggle port number resolution |
+| `p` | Toggle port display |
+| `s` | Toggle source host display |
+| `d` | Toggle destination host display |
+| `t` | Cycle through display modes (2-line/1-line/ports) |
+| `l` | Toggle peak hold |
+| `b` | Toggle bar graph display |
+| `B` | Toggle bytes/bits |
+| `j` / `k` | Scroll up/down through connections |
+| `f` | Edit BPF filter expression |
+| `1` `2` `3` | Sort by 2s/10s/40s column |
+| `<` | Sort by source address |
+| `>` | Sort by destination address |
+| `q` | Quit |
+
+## Reading iftop Output
+
+```
+                 12.5Kb          25.0Kb         37.5Kb         50.0Kb   62.5Kb
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 192.168.1.5                          =>      8.8.8.8                          │
+│                                      <=                            234Kb       │
+│ 192.168.1.5                          =>      93.184.216.34                    │
+│                                      <=                             45Kb       │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ TX:             cumulative    peak    rates:  2.56Kb   1.24Kb  0.98Kb         │
+│ RX:                                          289Kb    145Kb   98Kb            │
+│ TOTAL:                                       292Kb    146Kb   99Kb            │
+└───────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Top section:** Individual connections with send (=>) and receive (<=) rates
+- **Three rate columns:** Average over last 2 seconds, 10 seconds, 40 seconds
+- **Bottom section:** Total TX/RX/combined rates and cumulative totals
+
+## Non-Interactive / Script Mode
+
+```bash
+# Run for 10 seconds and output text summary
+sudo iftop -t -s 10 -n -N -i eth0 2>/dev/null
+
+# Capture output to file
+sudo iftop -t -s 30 -n -i eth0 > /tmp/iftop-report.txt 2>&1
+```
+
+---
+
+
+
+# 39. `vnstat` — Network Traffic Monitor (Historical)
+
+`vnstat` is a console-based network traffic monitor that records and displays historical traffic statistics without requiring root for viewing. Data is stored in a database and persists across reboots.
+
+## Installation
+
+```bash
+sudo apt install vnstat              # Debian/Ubuntu
+sudo dnf install vnstat              # RHEL/Fedora
+```
+
+## Service Setup
+
+```bash
+# Enable and start the vnstat daemon (required for data collection)
+sudo systemctl enable --now vnstatd
+
+# Check daemon status
+sudo systemctl status vnstatd
+```
+
+## Viewing Traffic Statistics
+
+```bash
+# Summary for all monitored interfaces
+vnstat
+
+# Summary for a specific interface
+vnstat -i eth0
+
+# Live rate (updates every second)
+vnstat -l
+vnstat -l -i eth0
+
+# Hourly statistics (current day)
+vnstat -h
+vnstat -hg              # With ASCII graph
+
+# Daily statistics (last 30 days)
+vnstat -d
+
+# Monthly statistics (last 12 months)
+vnstat -m
+
+# Yearly statistics
+vnstat -y
+
+# Top 10 days by traffic
+vnstat -t
+vnstat -t 20            # Top 20 days
+
+# 5-minute intervals for current hour
+vnstat -5
+vnstat -5 30            # Last 30 five-minute intervals
+
+# Show traffic for a specific date range
+vnstat --begin 2024-01-01 --end 2024-01-31
+
+# JSON output (for scripting)
+vnstat --json
+vnstat --json d         # Daily in JSON
+vnstat --json m         # Monthly in JSON
+
+# XML output
+vnstat --xml
+```
+
+## Database Management
+
+```bash
+# List monitored interfaces
+vnstat --iflist
+
+# List interfaces in the database
+vnstat --dbiflist
+
+# Add an interface to monitoring
+sudo vnstat --add -i eth0
+
+# Remove an interface from monitoring
+sudo vnstat --remove -i eth0
+
+# Rename an interface in the database
+sudo vnstat --rename oldname newname
+
+# Show database file location
+vnstat --config
+
+# Reset statistics for an interface
+sudo vnstat --reset -i eth0
+
+# Delete all data for an interface
+sudo vnstat --delete -i eth0
+
+# Delete all databases
+sudo vnstat --delete --force
+```
+
+## Configuration
+
+```bash
+# View configuration
+cat /etc/vnstat.conf
+
+# Key settings in /etc/vnstat.conf:
+# DatabaseDir "/var/lib/vnstat"
+# Interface "eth0"
+# MaxBandwidth 1000        # Interface speed in Mbit/s
+# UpdateInterval 20        # How often to update (seconds)
+# PollInterval 5           # Polling interval (seconds)
+# MonthRotate 1            # Day to start monthly counting
+
+# Apply config changes
+sudo systemctl restart vnstatd
+```
+
+## Useful Examples
+
+```bash
+# Quick bandwidth summary for all interfaces
+vnstat --short
+
+# Show traffic since a specific date
+vnstat -i eth0 --begin 2024-06-01
+
+# Compare two interfaces
+vnstat -i eth0 && vnstat -i eth1
+
+# Show only today's traffic
+vnstat -d 1
+
+# Show only this month's traffic
+vnstat -m 1
+
+# Check total data transferred this month
+vnstat -m | grep "$(date +%Y-%m)"
+```
+
+---
+
+
+
+# 40. `nethogs` — Per-Process Bandwidth Monitor
+
+`nethogs` shows real-time network bandwidth usage **per process**, unlike `iftop` (which shows per connection) or `vnstat` (which shows per interface). It groups connections by PID and program name.
+
+## Installation
+
+```bash
+sudo apt install nethogs             # Debian/Ubuntu
+sudo dnf install nethogs             # RHEL/Fedora
+```
+
+## Usage
+
+```bash
+# Monitor all interfaces (requires root)
+sudo nethogs
+
+# Monitor a specific interface
+sudo nethogs eth0
+sudo nethogs ens3
+
+# Monitor multiple interfaces
+sudo nethogs eth0 eth1
+
+# Set refresh interval in seconds (default: 1)
+sudo nethogs -d 5
+
+# Tracemode: non-interactive, logs each change to stdout
+sudo nethogs -t eth0
+
+# Set refresh interval in tracemode
+sudo nethogs -t -d 2 eth0
+
+# Show sent/received bytes (verbose level 3 shows both TX and RX)
+sudo nethogs -v 3
+
+# Bytes per second instead of kilobytes
+sudo nethogs -v 0                    # kB/s (default)
+sudo nethogs -v 1                    # Total B
+sudo nethogs -v 2                    # Total kB
+sudo nethogs -v 3                    # kB/s TX and RX separately
+
+# Sniff a specific device with pcap filter
+sudo nethogs -f "port 443" eth0
+```
+
+## Interactive Keys
+
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `s` | Sort by sent bandwidth |
+| `r` | Sort by received bandwidth |
+| `m` | Cycle display mode (kB/s → total kB → total B → kB/s) |
+
+## Reading nethogs Output
+
+```
+NetHogs version 0.8.5
+
+    PID USER     PROGRAM                      DEV        SENT      RECEIVED
+  12345 root     /usr/bin/wget                eth0       0.000     145.230 KB/sec
+  23456 www-data /usr/sbin/nginx              eth0       2.354       0.123 KB/sec
+   5678 user     /usr/bin/chrome              eth0       0.045      23.456 KB/sec
+  ......                                                ======    ========
+                                                         2.399     168.809 KB/sec
+```
+
+| Column | Meaning |
+|--------|---------|
+| `PID` | Process ID |
+| `USER` | User running the process |
+| `PROGRAM` | Full path of executable |
+| `DEV` | Network interface |
+| `SENT` | Outbound bandwidth |
+| `RECEIVED` | Inbound bandwidth |
+
+## Non-Interactive / Logging
+
+```bash
+# Log bandwidth to file (one line per update per process)
+sudo nethogs -t eth0 2>/dev/null | tee /tmp/nethogs.log
+
+# Parse nethogs tracemode output for a specific program
+sudo nethogs -t eth0 2>/dev/null | grep nginx
+
+# Run for 60 seconds then exit
+sudo timeout 60 nethogs -t eth0 2>/dev/null
+```
+
+---
+
+
+
+# 41. `bmon` — Bandwidth Monitor
+
+`bmon` (Bandwidth Monitor) is a real-time network bandwidth monitor and rate estimator. It shows per-interface statistics with a visual ASCII rate graph and detailed counters.
+
+## Installation
+
+```bash
+sudo apt install bmon               # Debian/Ubuntu
+sudo dnf install bmon               # RHEL/Fedora
+```
+
+## Basic Usage
+
+```bash
+# Monitor all interfaces
+bmon
+
+# Monitor a specific interface
+bmon -p eth0
+
+# Monitor multiple interfaces
+bmon -p eth0,lo
+
+# Monitor with a pattern (regex)
+bmon -p "eth.*"
+
+# Set update interval in milliseconds (default: 1000)
+bmon -r 500                         # Update every 500ms
+
+# Show interface details immediately on startup
+bmon -p eth0 -s 1
+
+# Output mode: simple text (no TUI)
+bmon -o simple
+
+# Output mode: format string
+bmon -p eth0 -o "format:$(attr:name) rx:$(attr:rx:bytes)"
+
+# Use curses TUI (default)
+bmon -o curses
+```
+
+## Interactive Keys
+
+| Key | Action |
+|-----|--------|
+| Arrow keys | Navigate interfaces |
+| `d` | Toggle details panel |
+| `g` | Toggle graphical rate display |
+| `i` | Show interface list |
+| `h` | Show help |
+| `q` | Quit |
+| `1` | Toggle RX graph |
+| `2` | Toggle TX graph |
+| Page Up/Down | Scroll details |
+
+## Reading bmon Output
+
+```
+ Interface   RX bps       pps      RX bytes    RX pkts  TX bps       pps      TX bytes    TX pkts
+ lo          0             0        12.3 KiB      123    0             0        12.3 KiB      123
+ eth0        1.23 Mibit/s  920      567.8 MiB  1234567  234.5 Kibit/s  105      45.6 MiB   456789
+
+ (RX rate graph — last 60 seconds)
+ ┌──────────────────────────────────────────────────────────────────────────────┐
+ │ 1.23M ┤ ███████████████████████                                              │
+ │  614K ┤                        ████████████████                              │
+ │    0  └──────────────────────────────────────────────────────────────────────┘
+```
+
+## Scripting / Non-Interactive
+
+```bash
+# Output simple text, run 10 cycles then exit
+bmon -p eth0 -o simple -c 10
+
+# Parse specific counter values
+bmon -p eth0 -o "format:(attr:name) rxrate:$(attr:rx:rate) txrate:$(attr:tx:rate)" -c 5
+
+# Log bandwidth every second for 60 seconds
+bmon -p eth0 -o simple -c 60 -r 1000 | tee /tmp/bmon.log
+
+# Show only one interface, all counters, quiet TUI
+bmon -p eth0 -s 1 -o curses:quitafter=30
+```
+
+## Attributes Available in Format Output
+
+| Attribute | Description |
+|-----------|-------------|
+| `rx:bytes` | Total received bytes |
+| `tx:bytes` | Total transmitted bytes |
+| `rx:packets` | Total received packets |
+| `tx:packets` | Total transmitted packets |
+| `rx:errors` | Receive errors |
+| `tx:errors` | Transmit errors |
+| `rx:rate` | Current receive rate (bytes/sec) |
+| `tx:rate` | Current transmit rate (bytes/sec) |
+
+---
+
+
+
+# 42. `iperf3` — Network Performance Testing
 
 ## Syntax
 
@@ -4138,471 +6312,1902 @@ iperf3 -c 192.168.1.1 -p 9999
 
 ---
 
-# 24. `ethtool` — NIC Hardware Settings
+# 43. `tc` — Traffic Control (QoS / Network Emulation)
 
-## Flags
+`tc` (traffic control) is the Linux kernel's tool for managing network queuing disciplines (qdiscs), classifiers, and filters. It is used for bandwidth limiting, traffic shaping, and network emulation (adding delay, packet loss, etc.).
 
-| Flag | Description |
-|------|-------------|
-| (no flag) | Show NIC settings |
-| `-i` | Show driver info |
-| `-S` | Show NIC statistics |
-| `-a` | Show pause parameters |
-| `-A` | Change pause parameters |
-| `-c` | Show coalesce settings |
-| `-C` | Change coalesce settings |
-| `-g` | Show ring buffer sizes |
-| `-G` | Change ring buffer sizes |
-| `-k` | Show offload settings |
-| `-K` | Change offload settings |
-| `-l` | Show channel count |
-| `-L` | Change channel count |
-| `-m` | Show transceiver module info |
-| `-n` / `--show-nfc` | Show network flow classification rules |
-| `-p` | Identify interface (blink LED) |
-| `-r` | Restart auto-negotiation |
-| `-s` | Change NIC settings |
-| `-t` | Self-test |
-| `-T` | Show time stamping capabilities |
-| `--show-eee` | Show EEE (Energy Efficient Ethernet) |
-| `--set-eee` | Change EEE settings |
-| `--show-fec` | Show FEC (Forward Error Correction) |
-| `--set-fec` | Change FEC settings |
-| `--show-priv-flags` | Show private flags |
-| `--set-priv-flags` | Set private flags |
-
-## Examples
+## Syntax
 
 ```bash
-# Show NIC settings
-sudo ethtool eth0
-
-# Show driver info
-sudo ethtool -i eth0
-
-# Show statistics
-sudo ethtool -S eth0
-
-# Set speed/duplex
-sudo ethtool -s eth0 speed 1000 duplex full autoneg off
-
-# Show offload settings
-sudo ethtool -k eth0
-
-# Disable TCP segmentation offload
-sudo ethtool -K eth0 tso off
-
-# Enable generic receive offload
-sudo ethtool -K eth0 gro on
-
-# Show ring buffer sizes
-sudo ethtool -g eth0
-
-# Increase ring buffer
-sudo ethtool -G eth0 rx 4096 tx 4096
-
-# Blink NIC LED (identify)
-sudo ethtool -p eth0 5                  # Blink for 5 seconds
-
-# Show pause frames
-sudo ethtool -a eth0
-
-# Restart auto-negotiation
-sudo ethtool -r eth0
-
-# Show channel count
-sudo ethtool -l eth0
-
-# Show coalesce settings
-sudo ethtool -c eth0
-
-# Run self-test
-sudo ethtool -t eth0
+tc [ OPTIONS ] OBJECT { COMMAND | help }
+OBJECT := { qdisc | class | filter | action }
 ```
 
----
-
-# 25. `nmcli` — NetworkManager CLI
-
-## Main Commands
+## Viewing Current Configuration
 
 ```bash
-# General status
-nmcli general status
-nmcli general hostname
-nmcli general permissions
-nmcli general logging
+# Show qdiscs on all interfaces
+tc qdisc show
 
-# Networking
-nmcli networking on
-nmcli networking off
-nmcli networking connectivity
-
-# Device management
-nmcli device status
-nmcli device show
-nmcli device show eth0
-nmcli device connect eth0
-nmcli device disconnect eth0
-nmcli device wifi list
-nmcli device wifi rescan
-nmcli device wifi connect "SSID" password "PASS"
-nmcli device wifi hotspot ssid "MyHotspot" password "pass1234"
-
-# Connection management
-nmcli connection show
-nmcli connection show --active
-nmcli connection show "My Connection"
-nmcli connection up "My Connection"
-nmcli connection down "My Connection"
-nmcli connection delete "My Connection"
-nmcli connection reload
-nmcli connection load /etc/NetworkManager/system-connections/myconn.nmconnection
-
-# Create connections
-nmcli connection add type ethernet con-name "static" ifname eth0 \
-  ipv4.addresses 192.168.1.100/24 \
-  ipv4.gateway 192.168.1.1 \
-  ipv4.dns "8.8.8.8 8.8.4.4" \
-  ipv4.method manual
-
-nmcli connection add type wifi con-name "home-wifi" ifname wlan0 \
-  ssid "MyNetwork" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "password"
-
-nmcli connection add type bond con-name "bond0" ifname bond0 \
-  bond.options "mode=802.3ad,miimon=100"
-
-nmcli connection add type bridge con-name "br0" ifname br0
-
-nmcli connection add type vlan con-name "vlan100" ifname eth0.100 \
-  dev eth0 id 100
-
-# Modify connections
-nmcli connection modify "My Connection" ipv4.dns "1.1.1.1"
-nmcli connection modify "My Connection" +ipv4.dns "8.8.8.8"
-nmcli connection modify "My Connection" ipv4.addresses "192.168.1.200/24"
-nmcli connection modify "My Connection" connection.autoconnect yes
-
-# Monitor
-nmcli monitor
-```
-
----
-
-# 26–30: Quick Reference for Remaining Commands
-
-## `whois`
-
-```bash
-whois example.com                    # Domain lookup
-whois 8.8.8.8                        # IP lookup
-whois -h whois.arin.net 8.8.8.8     # Query specific WHOIS server
-```
-
-## `hostname` / `hostnamectl`
-
-```bash
-hostname                              # Show hostname
-hostname -f                           # FQDN
-hostname -I                           # All IPs
-hostname -i                           # Loopback address
-hostname -d                           # Domain name
-hostname -s                           # Short hostname
-sudo hostnamectl set-hostname newname  # Set hostname permanently
-hostnamectl status                     # Show full hostname info
-```
-
-## `ipcalc`
-
-```bash
-ipcalc 192.168.1.100/24              # Calculate network info
-ipcalc 192.168.1.100 255.255.255.0   # With netmask
-ipcalc 10.0.0.0/8 -s 200 100 50     # Subnet splitting
-```
-
-## `lsof` (Network)
-
-```bash
-sudo lsof -i                         # All network connections
-sudo lsof -i :80                     # Connections on port 80
-sudo lsof -i tcp                     # TCP connections only
-sudo lsof -i udp                     # UDP connections only
-sudo lsof -i @192.168.1.50           # Connections to host
-sudo lsof -i :1-1024                 # Privileged ports
-sudo lsof -i -P -n                   # Numeric, no resolve
-sudo lsof -iTCP -sTCP:LISTEN         # Only listening TCP
-sudo lsof -iTCP -sTCP:ESTABLISHED    # Only established TCP
-sudo lsof -u username -i             # User's network connections
-```
-
-## `iftop`
-
-```bash
-sudo iftop                            # Default interface
-sudo iftop -i eth0                    # Specific interface
-sudo iftop -n                         # Numeric (no DNS)
-sudo iftop -N                         # No port resolution
-sudo iftop -P                         # Show ports
-sudo iftop -B                         # Bytes instead of bits
-sudo iftop -f "dst port 80"          # BPF filter
-sudo iftop -F 192.168.1.0/24         # Filter by network
-```
-
-## `vnstat`
-
-```bash
-vnstat                                # Summary for default interface
-vnstat -i eth0                        # Specific interface
-vnstat -h                             # Hourly stats
-vnstat -hg                            # Hourly graph
-vnstat -d                             # Daily stats
-vnstat -m                             # Monthly stats
-vnstat -y                             # Yearly stats
-vnstat -t                             # Top 10 days
-vnstat -l                             # Live monitoring
-vnstat -5                             # 5-minute stats
-vnstat --json                         # JSON output
-vnstat --add -i eth0                  # Add interface to monitor
-vnstat --remove -i eth0               # Remove interface
-```
-
-## `nethogs`
-
-```bash
-sudo nethogs                          # All interfaces
-sudo nethogs eth0                     # Specific interface
-sudo nethogs -d 5                     # Refresh every 5 seconds
-sudo nethogs -t                       # Tracemode (non-interactive)
-sudo nethogs -v 3                     # Show both sent/received
-```
-
-## `tc` (Traffic Control) — Key Commands
-
-```bash
-# Show current qdisc
+# Show qdiscs on a specific interface
 tc qdisc show dev eth0
 
-# Add delay
-sudo tc qdisc add dev eth0 root netem delay 100ms
-
-# Add delay with jitter
-sudo tc qdisc add dev eth0 root netem delay 100ms 20ms
-
-# Add packet loss
-sudo tc qdisc add dev eth0 root netem loss 5%
-
-# Add bandwidth limit
-sudo tc qdisc add dev eth0 root tbf rate 1mbit burst 32kbit latency 400ms
-
-# Combined
-sudo tc qdisc add dev eth0 root netem delay 50ms loss 1% rate 10mbit
-
-# Remove rules
-sudo tc qdisc del dev eth0 root
+# Show traffic classes
+tc class show dev eth0
 
 # Show filters
 tc filter show dev eth0
+
+# Show with statistics
+tc -s qdisc show dev eth0
+tc -s class show dev eth0
+
+# Show in JSON format
+tc -j qdisc show dev eth0
 ```
 
-## `iw` (Wireless)
+## Network Emulation with `netem`
+
+`netem` (Network Emulator) adds artificial impairments — essential for testing application behavior under poor network conditions.
 
 ```bash
-iw dev                                # List wireless devices
-iw dev wlan0 info                     # Interface info
-iw dev wlan0 scan                     # Scan for networks
-iw dev wlan0 link                     # Connection info
-iw dev wlan0 station dump             # Station statistics
-iw phy phy0 info                      # Physical device capabilities
-sudo iw dev wlan0 connect "SSID"      # Connect (open network)
-sudo iw dev wlan0 disconnect          # Disconnect
-sudo iw dev wlan0 set power_save off  # Disable power save
-iw reg get                            # Regulatory domain
-sudo iw reg set US                    # Set regulatory domain
+# Add delay (100ms)
+sudo tc qdisc add dev eth0 root netem delay 100ms
+
+# Add delay with jitter (100ms ± 20ms)
+sudo tc qdisc add dev eth0 root netem delay 100ms 20ms
+
+# Add delay with jitter and correlation (25% correlated)
+sudo tc qdisc add dev eth0 root netem delay 100ms 20ms 25%
+
+# Add packet loss (5%)
+sudo tc qdisc add dev eth0 root netem loss 5%
+
+# Packet loss with correlation (10% correlated — simulates burst loss)
+sudo tc qdisc add dev eth0 root netem loss 5% 25%
+
+# Add packet duplication
+sudo tc qdisc add dev eth0 root netem duplicate 1%
+
+# Add packet corruption (bit errors)
+sudo tc qdisc add dev eth0 root netem corrupt 0.1%
+
+# Add packet reordering (5% reordered with 50ms correlation)
+sudo tc qdisc add dev eth0 root netem delay 10ms reorder 5% 50%
+
+# Combined: delay + loss + duplicate
+sudo tc qdisc add dev eth0 root netem delay 50ms 10ms loss 2% duplicate 1%
+
+# Replace (change) existing netem settings
+sudo tc qdisc change dev eth0 root netem delay 200ms
+
+# Remove all qdiscs (restore default)
+sudo tc qdisc del dev eth0 root
+
+# Simulate slow connection (rate + delay)
+sudo tc qdisc add dev eth0 root tbf rate 1mbit burst 32kbit latency 400ms
 ```
 
-## `socat` — Multipurpose Relay
+## Bandwidth Limiting with Token Bucket Filter (`tbf`)
 
 ```bash
-# TCP port forwarder
-socat TCP-LISTEN:8080,fork TCP:192.168.1.100:80
+# Limit to 1 Mbit/s
+sudo tc qdisc add dev eth0 root tbf rate 1mbit burst 32kbit latency 400ms
 
-# UDP forwarder
-socat UDP-LISTEN:5000,fork UDP:192.168.1.100:5000
+# Limit to 10 Mbit/s
+sudo tc qdisc add dev eth0 root tbf rate 10mbit burst 64kbit latency 200ms
 
-# Simple HTTP server
-socat TCP-LISTEN:8080,fork EXEC:"echo HTTP/1.0 200 OK; echo; cat index.html"
+# Limit to 100 Kbit/s (very slow — simulate mobile)
+sudo tc qdisc add dev eth0 root tbf rate 100kbit burst 8kbit latency 1000ms
 
-# TLS server
-socat OPENSSL-LISTEN:443,cert=server.pem,fork TCP:localhost:80
-
-# Unix socket to TCP
-socat UNIX-LISTEN:/tmp/my.sock,fork TCP:192.168.1.100:3306
-
-# Two-way pipe between processes
-socat EXEC:"/bin/cat" EXEC:"/bin/cat"
-
-# Serial port to TCP
-socat TCP-LISTEN:2000,fork /dev/ttyUSB0,b9600
+# Remove bandwidth limit
+sudo tc qdisc del dev eth0 root
 ```
 
-## `openssl s_client` — SSL/TLS Testing
+## Hierarchical Token Bucket (`htb`) — Per-Class Rate Limiting
 
 ```bash
-# Test TLS connection
-openssl s_client -connect example.com:443
+# Create root qdisc with a default class
+sudo tc qdisc add dev eth0 root handle 1: htb default 10
 
-# Show certificate chain
-openssl s_client -connect example.com:443 -showcerts
+# Add root class (ceiling = full link speed)
+sudo tc class add dev eth0 parent 1: classid 1:1 htb rate 100mbit
 
-# Test specific TLS version
-openssl s_client -connect example.com:443 -tls1_2
-openssl s_client -connect example.com:443 -tls1_3
+# Add sub-class for "guaranteed" traffic (10 Mbit/s, can burst to 100)
+sudo tc class add dev eth0 parent 1:1 classid 1:10 htb rate 10mbit ceil 100mbit
 
-# Test with SNI
-openssl s_client -connect example.com:443 -servername example.com
+# Add sub-class for "limited" traffic (1 Mbit/s max)
+sudo tc class add dev eth0 parent 1:1 classid 1:20 htb rate 1mbit ceil 1mbit
 
-# Check certificate dates
-echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates
+# Add filter: SSH traffic (dport 22) → class 1:10 (fast)
+sudo tc filter add dev eth0 protocol ip parent 1: prio 1 u32   match ip dport 22 0xffff flowid 1:10
 
-# Check certificate subject
-echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -subject
-
-# STARTTLS for SMTP
-openssl s_client -connect mail.example.com:25 -starttls smtp
-
-# STARTTLS for IMAP
-openssl s_client -connect mail.example.com:143 -starttls imap
-
-# Check supported ciphers
-openssl s_client -connect example.com:443 -cipher 'ALL'
-
-# Verify certificate
-openssl s_client -connect example.com:443 -verify 5 -CApath /etc/ssl/certs/
+# Add filter: HTTP traffic → class 1:20 (limited)
+sudo tc filter add dev eth0 protocol ip parent 1: prio 2 u32   match ip dport 80 0xffff flowid 1:20
 ```
 
-## `telnet` (Connectivity Testing)
+## Quick Network Impairment Examples
 
 ```bash
-# Test TCP port
-telnet 192.168.1.1 80
-telnet 192.168.1.1 22
-telnet 192.168.1.1 25
+# Simulate 3G mobile network
+sudo tc qdisc add dev eth0 root netem delay 100ms 20ms loss 2% rate 2mbit
 
-# HTTP request
-telnet example.com 80
-# Then type:
-# GET / HTTP/1.1
-# Host: example.com
-# (blank line)
+# Simulate satellite link (high latency, limited bandwidth)
+sudo tc qdisc add dev eth0 root netem delay 600ms 100ms rate 5mbit
+
+# Simulate terrible WiFi
+sudo tc qdisc add dev eth0 root netem delay 50ms 30ms loss 10% duplicate 2%
+
+# Check settings applied
+tc qdisc show dev eth0
+
+# Remove everything
+sudo tc qdisc del dev eth0 root
 ```
 
-## `dhclient` — DHCP Client
+---
+
+
+
+# 44. `iwconfig` — Wireless Interface Configuration (Legacy)
+
+`iwconfig` configures wireless network interfaces using the Wireless Extensions API. It has been **replaced by `iw`** for 802.11 (Wi-Fi) management on modern Linux, and by `nmcli`/`nmtui` for full connection management. It is part of the `wireless-tools` package.
+
+## Installation
 
 ```bash
-sudo dhclient eth0                    # Request DHCP lease
-sudo dhclient -r eth0                 # Release DHCP lease
-sudo dhclient -v eth0                 # Verbose
-sudo dhclient -6 eth0                 # DHCPv6
-sudo dhclient -d eth0                 # Debug (foreground)
+sudo apt install wireless-tools      # Debian/Ubuntu
+sudo dnf install wireless-tools      # RHEL/Fedora
 ```
 
-## `resolvectl` / `systemd-resolve`
+## Viewing Wireless Information
 
 ```bash
-resolvectl status                     # DNS status
-resolvectl query example.com          # Resolve name
-resolvectl dns eth0 8.8.8.8 8.8.4.4  # Set DNS for interface
-resolvectl domain eth0 example.com    # Set search domain
-resolvectl flush-caches               # Flush DNS cache
-resolvectl statistics                 # Cache statistics
+# Show wireless settings for all wireless interfaces
+iwconfig
+
+# Show settings for a specific interface
+iwconfig wlan0
+
+# Show only interfaces with wireless extensions
+iwconfig 2>/dev/null | grep -v "no wireless"
 ```
 
-## `tshark` — Terminal Wireshark
+### Reading iwconfig Output
 
-```bash
-# Capture on interface
-tshark -i eth0
-
-# Capture with filter
-tshark -i eth0 -f "tcp port 80"
-
-# Read from pcap
-tshark -r capture.pcap
-
-# Display filter
-tshark -i eth0 -Y "http.request"
-
-# Save to file
-tshark -i eth0 -w output.pcap
-
-# Show specific fields
-tshark -i eth0 -T fields -e ip.src -e ip.dst -e tcp.port
-
-# Packet count
-tshark -i eth0 -c 100
-
-# Verbose decode
-tshark -i eth0 -V
-
-# Statistics
-tshark -i eth0 -z conv,tcp
-tshark -i eth0 -z io,stat,1
-tshark -r capture.pcap -z endpoints,ip
+```
+wlan0     IEEE 802.11  ESSID:"MyNetwork"
+          Mode:Managed  Frequency:5.18 GHz  Access Point: AA:BB:CC:DD:EE:FF
+          Bit Rate=300 Mb/s   Tx-Power=20 dBm
+          Retry short limit:7   RTS thr:off   Fragment thr:off
+          Power Management:on
+          Link Quality=65/70  Signal level=-45 dBm  Noise level=-95 dBm
+          Rx invalid nwid:0  Rx invalid crypt:0  Rx invalid frag:0
+          Tx excessive retries:0  Invalid misc:0   Missed beacon:0
 ```
 
-## `ab` — Apache HTTP Benchmarking
+| Field | Meaning |
+|-------|---------|
+| `ESSID` | Network name (SSID) |
+| `Mode` | Managed (client), Ad-Hoc, Monitor, Master |
+| `Frequency` | Channel frequency |
+| `Access Point` | BSSID of the connected AP |
+| `Bit Rate` | Current connection speed |
+| `Tx-Power` | Transmit power in dBm |
+| `Link Quality` | Signal quality (higher is better) |
+| `Signal level` | RSSI in dBm (less negative = stronger) |
+| `Noise level` | Background noise floor |
+
+## Configuring Wireless
 
 ```bash
-# 1000 requests, 10 concurrent
-ab -n 1000 -c 10 http://example.com/
+# Set the SSID (network name)
+sudo iwconfig wlan0 essid "MyNetwork"
 
-# With POST data
-ab -n 100 -c 5 -p data.json -T "application/json" http://example.com/api
+# Connect to a hidden network
+sudo iwconfig wlan0 essid "HiddenNet" ap any
 
-# With custom header
-ab -n 100 -c 10 -H "Authorization: Bearer TOKEN" http://example.com/
+# Set channel
+sudo iwconfig wlan0 channel 6
 
-# Keep-alive connections
-ab -n 1000 -c 10 -k http://example.com/
+# Set frequency
+sudo iwconfig wlan0 freq 2.437G
 
-# With timeout
-ab -n 100 -c 10 -s 30 http://example.com/
+# Set transmit power (in mW or dBm)
+sudo iwconfig wlan0 txpower 20
+sudo iwconfig wlan0 txpower 100mW
+
+# Set encryption key (WEP — legacy, insecure)
+sudo iwconfig wlan0 key s:mypassword
+
+# Disable encryption
+sudo iwconfig wlan0 key off
+
+# Set interface mode
+sudo iwconfig wlan0 mode Managed   # Client mode (default)
+sudo iwconfig wlan0 mode Monitor   # Capture all packets (requires root)
+sudo iwconfig wlan0 mode Ad-Hoc    # Peer-to-peer
+
+# Set bit rate
+sudo iwconfig wlan0 rate 54M
+sudo iwconfig wlan0 rate auto      # Let the driver decide
+
+# Enable power management
+sudo iwconfig wlan0 power on
+
+# Disable power management (useful for latency-sensitive apps)
+sudo iwconfig wlan0 power off
+
+# Set RTS/CTS threshold
+sudo iwconfig wlan0 rts 500        # Enable RTS for packets >500 bytes
+sudo iwconfig wlan0 rts off        # Disable
+
+# Commit changes to the card
+sudo iwconfig wlan0 commit
 ```
 
-## `fuser` — Identify Processes Using Ports
+## Modern Equivalent
+
+For modern systems, use `iw` (section 45) for low-level Wi-Fi management and `nmcli` (section 24) for connection management.
+
+| `iwconfig` | `iw` equivalent |
+|------------|-----------------|
+| `iwconfig wlan0` | `iw dev wlan0 info` |
+| `iwconfig wlan0 essid "Net"` | `iw dev wlan0 connect "Net"` |
+| `iwconfig wlan0 mode Monitor` | `iw dev wlan0 set type monitor` |
+| `iwconfig wlan0 channel 6` | `iw dev wlan0 set channel 6` |
+| `iwconfig wlan0 txpower 20` | `iw dev wlan0 set txpower fixed 2000` |
+
+---
+
+
+
+# 45. `iw` — Wireless Configuration (Modern)
+
+`iw` is the modern command-line tool for managing wireless devices and their configuration. It uses the nl80211 netlink interface and replaces `iwconfig` for 802.11 wireless management.
+
+## Installation
 
 ```bash
-# Find process on port 80
-sudo fuser 80/tcp
-
-# Verbose
-sudo fuser -v 80/tcp
-
-# Kill process on port 80
-sudo fuser -k 80/tcp
-
-# Find process on UDP port 53
-sudo fuser 53/udp
-
-# Named socket
-sudo fuser -v /var/run/docker.sock
+sudo apt install iw                 # Debian/Ubuntu
+sudo dnf install iw                 # RHEL/Fedora
 ```
 
-## `bridge` — Bridge Management
+## Viewing Information
 
 ```bash
-# Show bridge info
+# List all wireless devices and interfaces
+iw dev
+
+# Show interface info (mode, channel, SSID, BSSID)
+iw dev wlan0 info
+
+# Show physical device (radio) capabilities
+iw phy
+
+# Show specific phy info
+iw phy phy0 info
+
+# Show supported interface modes
+iw phy phy0 info | grep "Supported interface modes" -A 10
+
+# Show connection/link status
+iw dev wlan0 link
+
+# Show station info (connected AP details)
+iw dev wlan0 station dump
+
+# Show scan results (cached)
+iw dev wlan0 scan dump
+
+# Trigger a new scan and show results
+sudo iw dev wlan0 scan
+
+# Show SSID/BSSID/signal of visible networks
+sudo iw dev wlan0 scan | grep -E "SSID:|BSS |signal:"
+
+# Show regulatory domain
+iw reg get
+
+# Show supported channels for current regulatory domain
+iw phy phy0 channels
+```
+
+## Connecting to a Network
+
+```bash
+# Connect to an open (unencrypted) network
+sudo iw dev wlan0 connect "NetworkName"
+
+# Connect to an open network by BSSID
+sudo iw dev wlan0 connect "NetworkName" 00:11:22:33:44:55
+
+# Connect on a specific frequency/channel
+sudo iw dev wlan0 connect "NetworkName" 2412            # 2.4GHz channel 1
+
+# Disconnect
+sudo iw dev wlan0 disconnect
+```
+
+> **Note:** For WPA/WPA2 networks, `iw connect` does not handle encryption. Use `wpa_supplicant` + `wpa_cli` or `nmcli`/`nmtui` for secured networks.
+
+## Interface Management
+
+```bash
+# Create a new wireless interface
+sudo iw dev wlan0 interface add wlan0mon type monitor    # Monitor mode iface
+sudo iw phy phy0 interface add wlan1 type managed       # Additional managed iface
+
+# Delete an interface
+sudo iw dev wlan0mon del
+
+# Set interface type
+sudo ip link set wlan0 down
+sudo iw dev wlan0 set type monitor        # Monitor mode
+sudo iw dev wlan0 set type managed        # Managed (client) mode
+sudo ip link set wlan0 up
+
+# Set channel
+sudo iw dev wlan0 set channel 6           # 2.4GHz channel 6
+sudo iw dev wlan0 set channel 36          # 5GHz channel 36
+sudo iw dev wlan0 set channel 6 HT40+    # 40MHz wide channel
+
+# Set frequency directly (in MHz)
+sudo iw dev wlan0 set freq 2437           # Channel 6
+sudo iw dev wlan0 set freq 5180           # 5GHz channel 36
+
+# Set transmit power (in mBm = dBm × 100)
+sudo iw dev wlan0 set txpower fixed 2000  # 20 dBm
+sudo iw dev wlan0 set txpower auto        # Let driver manage
+
+# Enable power save
+sudo iw dev wlan0 set power_save on
+sudo iw dev wlan0 set power_save off
+
+# Get power save state
+iw dev wlan0 get power_save
+```
+
+## Regulatory Domain
+
+```bash
+# Set regulatory domain (country code)
+sudo iw reg set US
+sudo iw reg set DE
+sudo iw reg set JP
+
+# Show current regulatory info
+iw reg get
+```
+
+## Statistics and Monitoring
+
+```bash
+# Show received signal strength and TX/RX stats
+iw dev wlan0 link
+
+# Show detailed statistics for connected station (AP)
+iw dev wlan0 station dump
+
+# Show per-packet statistics
+iw dev wlan0 survey dump
+
+# Monitor events in real time
+iw event
+iw event -f          # With timing
+iw event -t          # With timestamps
+```
+
+---
+
+
+
+# 46. `brctl` — Bridge Control (Legacy)
+
+`brctl` manages Ethernet bridging — connecting multiple network segments at Layer 2. It has been **replaced by `bridge`** and `ip link` on modern Linux. Part of the `bridge-utils` package.
+
+## Installation
+
+```bash
+sudo apt install bridge-utils        # Debian/Ubuntu
+sudo dnf install bridge-utils        # RHEL/Fedora
+```
+
+## Viewing Bridge Configuration
+
+```bash
+# List all bridges
+brctl show
+
+# Show a specific bridge
+brctl show br0
+
+# Show spanning tree protocol (STP) state
+brctl showstp br0
+
+# Show MAC address table (forwarding database)
+brctl showmacs br0
+```
+
+### Reading brctl show Output
+
+```
+bridge name  bridge id          STP enabled  interfaces
+br0          8000.000c29abc123  no           eth0
+                                             eth1
+virbr0       8000.525400123456  yes          virbr0-nic
+```
+
+## Creating and Managing Bridges
+
+```bash
+# Create a new bridge
+sudo brctl addbr br0
+
+# Delete a bridge (must bring down first)
+sudo ip link set br0 down
+sudo brctl delbr br0
+
+# Add an interface to a bridge
+sudo brctl addif br0 eth0
+sudo brctl addif br0 eth1
+
+# Remove an interface from a bridge
+sudo brctl delif br0 eth0
+
+# Bring up the bridge
+sudo ip link set br0 up
+
+# Assign IP to the bridge
+sudo ip addr add 192.168.1.1/24 dev br0
+```
+
+## Spanning Tree Protocol (STP)
+
+```bash
+# Enable STP on a bridge (prevents loops)
+sudo brctl stp br0 on
+
+# Disable STP
+sudo brctl stp br0 off
+
+# Set bridge priority (lower = more likely to be root bridge)
+sudo brctl setbridgeprio br0 32768
+
+# Set port priority
+sudo brctl setportprio br0 eth0 128
+
+# Set hello time (seconds between hello packets)
+sudo brctl sethello br0 2
+
+# Set max age (seconds before port enters forwarding state)
+sudo brctl setmaxage br0 20
+
+# Set forward delay (seconds before entering forwarding state)
+sudo brctl setfd br0 15
+
+# Set path cost for a port (lower = preferred path)
+sudo brctl setpathcost br0 eth0 100
+```
+
+## Modern Equivalents (prefer these)
+
+```bash
+# Create bridge
+sudo ip link add br0 type bridge
+
+# Add interface to bridge
+sudo ip link set eth0 master br0
+
+# Remove interface
+sudo ip link set eth0 nomaster
+
+# Show bridges
 bridge link show
+
+# Show FDB (forwarding database)
 bridge fdb show
+```
+
+| `brctl` | Modern equivalent |
+|---------|------------------|
+| `brctl show` | `bridge link show` |
+| `brctl addbr br0` | `ip link add br0 type bridge` |
+| `brctl delbr br0` | `ip link del br0` |
+| `brctl addif br0 eth0` | `ip link set eth0 master br0` |
+| `brctl delif br0 eth0` | `ip link set eth0 nomaster` |
+| `brctl showmacs br0` | `bridge fdb show br br0` |
+| `brctl stp br0 on` | `ip link set br0 type bridge stp_state 1` |
+
+---
+
+
+
+# 47. `bridge` — Bridge Management (Modern)
+
+The `bridge` command from the `iproute2` package manages Ethernet bridges, forwarding databases (FDB), VLAN filtering, and multicast. It is the modern replacement for `brctl`.
+
+## Viewing Bridge State
+
+```bash
+# Show all bridge ports and their state
+bridge link show
+
+# Show bridge link for a specific interface
+bridge link show dev eth0
+
+# Show forwarding database (FDB — MAC → port mapping)
+bridge fdb show
+
+# Show FDB for a specific bridge
+bridge fdb show br br0
+
+# Show FDB for a specific interface
+bridge fdb show dev eth0
+
+# Show VLAN database
 bridge vlan show
+
+# Show VLAN for a specific interface
+bridge vlan show dev eth0
+
+# Show multicast router ports
 bridge mdb show
 
-# Add FDB entry
-sudo bridge fdb add 00:11:22:33:44:55 dev eth0 master
+# Show multicast database for a specific bridge
+bridge mdb show dev br0
 
-# Show STP info
-bridge link show dev br0
+# Show STP (spanning tree) information
+bridge link show | grep -i state
+
+# Verbose output
+bridge -d link show
+bridge -d fdb show
 ```
+
+## Managing FDB Entries
+
+```bash
+# Add a static FDB entry (MAC → port)
+sudo bridge fdb add 00:11:22:33:44:55 dev eth0
+
+# Add as permanent entry (won't age out)
+sudo bridge fdb add 00:11:22:33:44:55 dev eth0 permanent
+
+# Add as external entry (used in VXLAN/overlay networks)
+sudo bridge fdb add 00:11:22:33:44:55 dev vxlan0 dst 192.168.1.10
+
+# Delete a FDB entry
+sudo bridge fdb del 00:11:22:33:44:55 dev eth0
+
+# Flush all entries for an interface
+sudo bridge fdb flush dev eth0
+```
+
+## VLAN Management (VLAN-aware Bridge)
+
+```bash
+# Show all VLANs
+bridge vlan show
+
+# Add VLAN 10 to bridge port (access port — untagged)
+sudo bridge vlan add dev eth1 vid 10 pvid untagged
+
+# Add VLAN 20 as tagged (trunk port)
+sudo bridge vlan add dev eth2 vid 20
+
+# Add range of VLANs
+sudo bridge vlan add dev eth2 vid 10-20
+
+# Set native VLAN (PVID) for untagged traffic
+sudo bridge vlan add dev eth1 vid 100 pvid untagged master
+
+# Delete a VLAN from a port
+sudo bridge vlan del dev eth1 vid 10
+
+# Delete range of VLANs
+sudo bridge vlan del dev eth2 vid 10-20
+```
+
+## Multicast Database (MDB)
+
+```bash
+# Show multicast database
+bridge mdb show
+
+# Add a static multicast entry
+sudo bridge mdb add dev br0 port eth1 grp 224.0.0.1
+
+# Delete multicast entry
+sudo bridge mdb del dev br0 port eth1 grp 224.0.0.1
+```
+
+## Monitor Bridge Events
+
+```bash
+# Monitor bridge events in real time
+bridge monitor all
+
+# Monitor only link events
+bridge monitor link
+
+# Monitor only FDB events
+bridge monitor fdb
+
+# Monitor only VLAN events
+bridge monitor vlan
+```
+
+## Bridge Setup (Using ip + bridge Together)
+
+```bash
+# Full bridge setup example
+sudo ip link add name br0 type bridge
+sudo ip link set br0 up
+
+# Add STP
+sudo ip link set br0 type bridge stp_state 1
+
+# Add interfaces to bridge
+sudo ip link set eth0 master br0
+sudo ip link set eth1 master br0
+
+# Assign IP to bridge
+sudo ip addr add 192.168.1.100/24 dev br0
+
+# Verify
+bridge link show
+ip addr show br0
+```
+
+---
+
+
+
+# 48. `tunctl` / `ip tuntap` — TUN/TAP Devices
+
+TUN and TAP are virtual network devices:
+- **TUN** (tunnel): Operates at Layer 3 (IP packets). Used by VPNs (OpenVPN, WireGuard).
+- **TAP** (tap): Operates at Layer 2 (Ethernet frames). Used for VM networking and bridges.
+
+`tunctl` is the legacy tool; `ip tuntap` from `iproute2` is the modern approach.
+
+## Installation (tunctl)
+
+```bash
+sudo apt install uml-utilities       # Debian/Ubuntu
+```
+
+## Creating TUN/TAP Devices with `ip tuntap`
+
+```bash
+# Create a TUN device
+sudo ip tuntap add dev tun0 mode tun
+
+# Create a TAP device
+sudo ip tuntap add dev tap0 mode tap
+
+# Create and allow a specific user to use it (without root)
+sudo ip tuntap add dev tun0 mode tun user username
+sudo ip tuntap add dev tap0 mode tap user username group groupname
+
+# Create with specific flags
+sudo ip tuntap add dev tun0 mode tun one_queue   # Single packet queue
+sudo ip tuntap add dev tun0 mode tun pi           # Include packet info header
+sudo ip tuntap add dev tun0 mode tun vnet_hdr     # Virtio net header
+
+# Delete a TUN/TAP device
+sudo ip tuntap del dev tun0 mode tun
+sudo ip tuntap del dev tap0 mode tap
+
+# List all TUN/TAP devices
+ip tuntap show
+
+# Bring up the device and assign an IP
+sudo ip link set tun0 up
+sudo ip addr add 10.8.0.1/24 dev tun0
+```
+
+## Legacy `tunctl` Commands
+
+```bash
+# Create a TUN interface
+sudo tunctl -t tun0
+
+# Create for a specific user
+sudo tunctl -t tun0 -u username
+
+# Create TAP interface
+sudo tunctl -t tap0 -n       # -n for no persistent mode
+
+# Delete a TUN/TAP interface
+sudo tunctl -d tun0
+
+# List TUN/TAP interfaces
+cat /proc/net/dev | grep -E "tun|tap"
+```
+
+## Persistent vs Ephemeral
+
+- **Persistent:** Device stays after creating process exits (default with `ip tuntap`)
+- **Ephemeral:** Device is removed when the creating process closes the fd (used by VPN daemons)
+
+```bash
+# Create persistent (survives after this shell exits)
+sudo ip tuntap add dev tun0 mode tun
+
+# Verify persistence
+ip link show tun0
+
+# Manually delete when done
+sudo ip tuntap del dev tun0 mode tun
+```
+
+## Manual VPN Tunnel (Point-to-Point)
+
+```bash
+# ── Server side ──
+sudo ip tuntap add dev tun0 mode tun
+sudo ip link set tun0 up
+sudo ip addr add 10.8.0.1 peer 10.8.0.2 dev tun0
+
+# ── Client side ──
+sudo ip tuntap add dev tun0 mode tun
+sudo ip link set tun0 up
+sudo ip addr add 10.8.0.2 peer 10.8.0.1 dev tun0
+
+# Route traffic through tunnel
+sudo ip route add 192.168.0.0/16 dev tun0
+```
+
+## Attach TAP to a Bridge (VM Networking)
+
+```bash
+# Create TAP device for a VM
+sudo ip tuntap add dev tap-vm1 mode tap
+
+# Add to a bridge
+sudo ip link set tap-vm1 master br0
+sudo ip link set tap-vm1 up
+
+# Verify
+bridge link show dev tap-vm1
+```
+
+---
+
+
+
+# 49. `vconfig` / `ip link` — VLAN Management
+
+VLANs (Virtual LANs) segment network traffic by tagging Ethernet frames with a VLAN ID (802.1Q). `vconfig` is the legacy tool; `ip link` with `type vlan` is the modern approach.
+
+## Installation (vconfig)
+
+```bash
+sudo apt install vlan                # Debian/Ubuntu
+sudo dnf install vconfig             # RHEL/Fedora
+```
+
+## Creating VLAN Interfaces with `ip link` (Modern)
+
+```bash
+# Create VLAN interface (VLAN ID 100 on eth0)
+sudo ip link add link eth0 name eth0.100 type vlan id 100
+
+# Bring it up
+sudo ip link set eth0.100 up
+
+# Assign an IP address
+sudo ip addr add 192.168.100.1/24 dev eth0.100
+
+# Remove VLAN interface
+sudo ip link delete eth0.100
+
+# Show VLAN details
+ip -d link show eth0.100
+
+# List all VLAN interfaces
+ip link show type vlan
+
+# Show with VLAN details
+ip -d link show type vlan
+```
+
+## VLAN Options
+
+```bash
+# VLAN with specific protocol (802.1Q default, 802.1ad for Q-in-Q)
+sudo ip link add link eth0 name eth0.100 type vlan id 100 proto 802.1Q
+sudo ip link add link eth0 name eth0.200 type vlan id 200 proto 802.1ad
+
+# Loose binding (don't check if physical interface is up)
+sudo ip link add link eth0 name eth0.100 type vlan id 100 loose_binding on
+
+# Disable VLAN filtering on Rx (accept all VLAN tags)
+sudo ip link add link eth0 name eth0.100 type vlan id 100 reorder_hdr off
+```
+
+## Legacy `vconfig` Commands
+
+```bash
+# Load the 8021q module
+sudo modprobe 8021q
+
+# Add VLAN interface
+sudo vconfig add eth0 100           # Creates eth0.100
+
+# Remove VLAN interface
+sudo vconfig rem eth0.100
+
+# Set egress priority mapping
+sudo vconfig set_egress_map eth0.100 0 7
+
+# Set ingress priority mapping
+sudo vconfig set_ingress_map eth0.100 7 0
+
+# Set flag (e.g., REORDER_HDR)
+sudo vconfig set_flag eth0.100 1 1
+```
+
+## Persistent VLAN Configuration
+
+### Netplan (Ubuntu 20.04+)
+
+```yaml
+# /etc/netplan/01-netcfg.yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: false
+  vlans:
+    eth0.100:
+      id: 100
+      link: eth0
+      addresses: [192.168.100.1/24]
+      gateway4: 192.168.100.254
+      nameservers:
+        addresses: [8.8.8.8]
+    eth0.200:
+      id: 200
+      link: eth0
+      dhcp4: true
+```
+
+```bash
+# Apply Netplan config
+sudo netplan apply
+```
+
+### NetworkManager (nmcli)
+
+```bash
+# Create VLAN connection
+nmcli con add type vlan   con-name "vlan100"   ifname eth0.100   dev eth0   id 100   ip4 192.168.100.1/24   gw4 192.168.100.254
+
+# Bring up
+nmcli con up vlan100
+
+# Delete
+nmcli con del vlan100
+```
+
+## Verifying VLANs
+
+```bash
+# Show all VLAN interfaces
+ip link show type vlan
+
+# Show VLAN info (kernel sees)
+cat /proc/net/vlan/config
+
+# Capture VLAN-tagged traffic
+sudo tcpdump -i eth0 -e -n vlan
+
+# Capture specific VLAN
+sudo tcpdump -i eth0 -e vlan 100
+```
+
+---
+
+
+
+# 50. `dhclient` — DHCP Client
+
+`dhclient` (ISC DHCP client) requests and manages IP address assignments from DHCP servers. It is included with `isc-dhcp-client`. Many modern systems use `NetworkManager` or `systemd-networkd` for DHCP instead.
+
+## Installation
+
+```bash
+sudo apt install isc-dhcp-client     # Debian/Ubuntu
+sudo dnf install dhcp-client         # RHEL/Fedora
+```
+
+## Basic Usage
+
+```bash
+# Request DHCP address on an interface
+sudo dhclient eth0
+
+# Request and go to background (daemonize)
+sudo dhclient -q eth0
+
+# Release the current lease (tell server you're done)
+sudo dhclient -r eth0
+
+# Release and re-request
+sudo dhclient -r eth0 && sudo dhclient eth0
+
+# Force renewal (re-request without releasing)
+sudo dhclient -1 eth0
+
+# Request on all interfaces
+sudo dhclient
+```
+
+## Verbose and Debug
+
+```bash
+# Verbose output (show DHCP conversation)
+sudo dhclient -v eth0
+
+# Debug mode (very verbose)
+sudo dhclient -d -v eth0
+
+# Don't actually configure — just show what would happen
+sudo dhclient -n eth0
+```
+
+## Lease Files
+
+DHCP leases are stored in `/var/lib/dhclient/` or `/var/lib/NetworkManager/`:
+
+```bash
+# View current leases
+cat /var/lib/dhclient/dhclient.leases
+
+# View leases for a specific interface
+cat /var/lib/dhclient/dhclient.eth0.leases
+
+# Lease file fields
+# lease {
+#   interface "eth0";
+#   fixed-address 192.168.1.100;
+#   option subnet-mask 255.255.255.0;
+#   option routers 192.168.1.1;
+#   option domain-name-servers 8.8.8.8, 8.8.4.4;
+#   option domain-name "example.local";
+#   renew 2 2024/06/04 12:00:00;
+#   rebind 2 2024/06/04 21:00:00;
+#   expire 2 2024/06/04 23:00:00;
+# }
+```
+
+## Configuration File
+
+```bash
+# View/edit dhclient.conf
+cat /etc/dhcp/dhclient.conf
+
+# Common dhclient.conf settings:
+# timeout 60;                          # Wait 60s for DHCP response
+# retry 60;                            # Retry every 60s
+# reboot 10;                           # Try to get same IP for 10s on reboot
+# select-timeout 5;                    # Wait for responses before choosing
+
+# Specify hostname to send to DHCP server
+# send host-name "myserver";
+
+# Request specific options
+# request subnet-mask, broadcast-address, routers,
+#         domain-name-servers, domain-name, host-name;
+
+# Supersede DNS (use your own regardless of what DHCP says)
+# supersede domain-name-servers 8.8.8.8, 1.1.1.1;
+
+# Prepend DNS servers before DHCP-provided ones
+# prepend domain-name-servers 127.0.0.1;
+
+# Reject offers from a bad DHCP server
+# reject 192.168.1.50;
+
+# Request a specific IP
+# send dhcp-requested-address 192.168.1.100;
+```
+
+## Script Hooks
+
+dhclient runs `/etc/dhcp/dhclient-exit-hooks.d/` scripts on events:
+
+```bash
+# List available hooks
+ls /etc/dhcp/dhclient-exit-hooks.d/
+
+# Create a custom hook (runs when IP is assigned)
+cat > /etc/dhcp/dhclient-exit-hooks.d/my-hook << 'EOF'
+#!/bin/bash
+if [ "$reason" = "BOUND" ] || [ "$reason" = "RENEW" ]; then
+    echo "Got IP: $new_ip_address" >> /var/log/dhclient-events.log
+fi
+EOF
+chmod +x /etc/dhcp/dhclient-exit-hooks.d/my-hook
+```
+
+## Modern Alternatives
+
+On systems managed by NetworkManager:
+
+```bash
+# Renew DHCP via nmcli
+nmcli device reapply eth0
+
+# Or bounce the connection
+nmcli con down "Wired connection 1" && nmcli con up "Wired connection 1"
+```
+
+On systems managed by systemd-networkd:
+
+```bash
+# Renew DHCP
+sudo networkctl renew eth0
+
+# Force reconnect
+sudo networkctl down eth0 && sudo networkctl up eth0
+```
+
+---
+
+
+
+# 51. `resolvectl` / `systemd-resolve` — DNS Resolution Management
+
+`resolvectl` (formerly `systemd-resolve`) controls and queries `systemd-resolved`, the local DNS stub resolver daemon used on most modern systemd-based Linux distributions.
+
+## Status and Diagnostics
+
+```bash
+# Show overall status of all interfaces
+resolvectl status
+
+# Show status for a specific interface
+resolvectl status eth0
+
+# Show DNS statistics (cache hits, queries, failures)
+resolvectl statistics
+
+# Reset statistics
+resolvectl reset-statistics
+
+# Show current DNS server per interface
+resolvectl dns
+
+# Show current search domains per interface
+resolvectl domain
+```
+
+## Querying DNS
+
+```bash
+# Resolve a hostname (A record)
+resolvectl query example.com
+
+# Resolve to an IPv4 address only
+resolvectl query -4 example.com
+
+# Resolve to an IPv6 address only
+resolvectl query -6 example.com
+
+# Reverse DNS lookup
+resolvectl query 8.8.8.8
+
+# Lookup a specific record type
+resolvectl query --type=MX example.com
+resolvectl query --type=AAAA example.com
+resolvectl query --type=TXT example.com
+resolvectl query --type=NS example.com
+resolvectl query --type=SOA example.com
+resolvectl query --type=SRV _http._tcp.example.com
+
+# DNSSEC validation status
+resolvectl query --validate example.com
+
+# Lookup a service (SRV record)
+resolvectl service _http._tcp example.com
+
+# Open TLSA (DANE) record
+resolvectl tlsa tcp example.com:443
+```
+
+## Configuring per-Interface DNS
+
+```bash
+# Set DNS servers for an interface
+resolvectl dns eth0 8.8.8.8 8.8.4.4
+
+# Set DNS servers + search domains
+resolvectl dns eth0 8.8.8.8
+resolvectl domain eth0 example.com example.local
+
+# Add a DNS domain (for split-horizon DNS)
+resolvectl domain eth0 ~corporate.internal
+
+# Set default route flag (use this interface for all DNS)
+resolvectl default-route eth0 yes
+
+# Clear per-interface settings (revert to global config)
+resolvectl revert eth0
+```
+
+## Flushing and Resetting
+
+```bash
+# Flush all DNS caches
+resolvectl flush-caches
+
+# Reset all DNS settings
+resolvectl reset-server-features
+
+# Reload all settings from config files
+sudo systemctl reload systemd-resolved
+```
+
+## Configuration Files
+
+```bash
+# Main config file
+cat /etc/systemd/resolved.conf
+
+# Interface-specific config (drop-ins)
+ls /etc/systemd/resolved.conf.d/
+
+# Key settings in resolved.conf:
+# [Resolve]
+# DNS=8.8.8.8 1.1.1.1          # Global DNS servers
+# FallbackDNS=8.8.4.4 1.0.0.1  # Fallback servers
+# Domains=example.com           # Default search domains
+# DNSSEC=allow-downgrade        # DNSSEC mode (yes/no/allow-downgrade)
+# DNSOverTLS=opportunistic      # DoT mode (yes/no/opportunistic)
+# Cache=yes                     # Enable DNS cache
+# DNSStubListener=yes           # Listen on 127.0.0.53:53
+# ReadEtcHosts=yes              # Include /etc/hosts
+```
+
+## /etc/resolv.conf Integration
+
+```bash
+# Check current resolv.conf symlink
+ls -la /etc/resolv.conf
+
+# On systemd systems it should point to:
+# /run/systemd/resolve/stub-resolv.conf  (stub: 127.0.0.53)
+# or: /run/systemd/resolve/resolv.conf   (actual upstream DNS)
+
+# Re-create symlink to stub resolver
+sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+
+# Check what stub resolver is using
+cat /run/systemd/resolve/stub-resolv.conf
+```
+
+## Service Management
+
+```bash
+# Check status
+sudo systemctl status systemd-resolved
+
+# Restart
+sudo systemctl restart systemd-resolved
+
+# Check logs
+sudo journalctl -u systemd-resolved -f
+```
+
+---
+
+
+
+# 52. `telnet` — Remote Connection and Port Testing (Legacy)
+
+`telnet` is a legacy protocol for remote terminal access, now superseded by SSH. However, the `telnet` client remains extremely useful as a **quick TCP port test and banner-grabbing tool** — connecting manually to any TCP port to send raw text.
+
+## Installation
+
+```bash
+sudo apt install telnet              # Debian/Ubuntu
+sudo dnf install telnet             # RHEL/Fedora
+```
+
+## Port Testing (Primary Modern Use)
+
+```bash
+# Test if a TCP port is open (most common use today)
+telnet 192.168.1.1 22
+# Output if open:    Trying 192.168.1.1... Connected to 192.168.1.1.
+# Output if closed:  Connection refused
+# Output if filtered: (hangs until timeout)
+
+# Test well-known ports
+telnet example.com 80               # HTTP
+telnet example.com 443              # HTTPS (raw TLS — expect garbage)
+telnet smtp.example.com 25          # SMTP
+telnet smtp.example.com 587         # SMTP submission
+telnet pop.example.com 110          # POP3
+telnet imap.example.com 143         # IMAP
+
+# Quick Ctrl+] then 'quit' to exit after testing
+```
+
+## Manual HTTP Request
+
+```bash
+# Connect and type an HTTP request manually
+telnet example.com 80
+# Type: GET / HTTP/1.0
+# Press Enter twice to send
+```
+
+## SMTP Testing (Classic Use)
+
+```bash
+telnet smtp.example.com 25
+# Then type manually:
+# EHLO test.example.com
+# MAIL FROM:<test@example.com>
+# RCPT TO:<user@example.com>
+# DATA
+# Subject: Test
+# This is a test.
+# .
+# QUIT
+```
+
+## Remote Login (Legacy — Insecure, Avoid on Production)
+
+```bash
+# Connect to a remote host (telnet server must be running)
+telnet 192.168.1.1
+telnet hostname.example.com
+
+# Connect on a specific port
+telnet 192.168.1.1 2323
+
+# Connect with explicit options
+telnet -l username 192.168.1.1      # Specify login username
+
+# Bind to a specific local address
+telnet -b 192.168.1.100 remote-host 23
+```
+
+## Escape Commands (While Connected)
+
+After pressing the escape character (`Ctrl+]` by default), you enter telnet command mode:
+
+| Command | Action |
+|---------|--------|
+| `close` | Close current connection |
+| `quit` | Exit telnet entirely |
+| `open host port` | Open a new connection |
+| `status` | Show connection status |
+| `set escape X` | Change escape character |
+| `?` or `help` | Show all commands |
+
+## Alternatives
+
+| Tool | Advantage over telnet |
+|------|-----------------------|
+| `nc 192.168.1.1 22` | More scriptable, doesn't hang as long |
+| `ncat 192.168.1.1 22` | SSL support |
+| `curl telnet://host:port` | Good for automation |
+| `openssl s_client -connect host:443` | For HTTPS testing |
+| `ssh` | Encrypted remote login (always prefer over telnet) |
+
+---
+
+
+
+# 53. `ab` — Apache HTTP Benchmarking Tool
+
+`ab` (ApacheBench) is a simple HTTP load testing tool that sends a large number of requests to a web server and reports throughput, latency, and error statistics.
+
+## Installation
+
+```bash
+sudo apt install apache2-utils       # Debian/Ubuntu
+sudo dnf install httpd-tools         # RHEL/Fedora
+```
+
+## Syntax
+
+```bash
+ab [options] [http[s]://]hostname[:port]/path
+```
+
+> **Note:** The URL must end with `/` or a path. `http://example.com/` is valid; `http://example.com` is not.
+
+## Basic Usage
+
+```bash
+# Send 100 requests, 10 at a time (10 concurrent connections)
+ab -n 100 -c 10 http://example.com/
+
+# 1000 requests, 50 concurrent (typical light test)
+ab -n 1000 -c 50 http://example.com/
+
+# 10000 requests, 100 concurrent (load test)
+ab -n 10000 -c 100 http://example.com/
+
+# HTTPS (requires SSL support)
+ab -n 100 -c 10 https://example.com/
+```
+
+## Request Options
+
+```bash
+# Send HTTP POST request with form data
+ab -n 100 -c 10 -p post_data.txt -T "application/x-www-form-urlencoded" http://example.com/submit
+
+# Send HTTP POST with JSON body
+echo '{"key":"value"}' > data.json
+ab -n 100 -c 10 -p data.json -T "application/json" http://api.example.com/endpoint
+
+# PUT request
+ab -n 100 -c 10 -u put_data.txt -T "application/json" http://api.example.com/resource/1
+
+# Set custom request header
+ab -n 100 -c 10 -H "Authorization: Bearer TOKEN" http://api.example.com/
+
+# Send cookies
+ab -n 100 -c 10 -C "sessionid=abc123; csrftoken=xyz789" http://example.com/
+
+# Set HTTP method
+ab -n 100 -c 10 -m DELETE http://api.example.com/resource/1
+
+# Follow redirects (ab does NOT follow redirects by default)
+# Use curl for tests requiring redirect following
+```
+
+## Connection Options
+
+```bash
+# Keep-alive connections (HTTP/1.1 persistent connections)
+ab -n 1000 -c 50 -k http://example.com/
+
+# Set timeout (seconds) for responses
+ab -n 100 -c 10 -s 60 http://example.com/
+
+# Use HTTP/1.0 instead of HTTP/1.1
+ab -n 100 -c 10 -1 http://example.com/
+
+# Use specific HTTP version
+ab -n 100 -c 10 -P http://example.com/     # HTTPS proxy
+```
+
+## Output Options
+
+```bash
+# Verbose output (show request/response headers)
+ab -n 10 -c 1 -v 4 http://example.com/
+
+# Save results to CSV (gnuplot-compatible)
+ab -n 1000 -c 50 -e output.csv http://example.com/
+
+# Save request completion times to file (one per line)
+ab -n 1000 -c 50 -g gnuplot.tsv http://example.com/
+
+# Combine: detailed test with output
+ab -n 1000 -c 100 -k -e results.csv -g times.tsv http://example.com/
+```
+
+### Reading ab Output
+
+```
+Server Software:        nginx/1.25.0
+Server Hostname:        example.com
+Server Port:            80
+
+Concurrency Level:      50
+Time taken for tests:   2.345 seconds
+Complete requests:      1000
+Failed requests:        0
+Keep-Alive requests:    990
+Total transferred:      1234567 bytes
+HTML transferred:       890123 bytes
+Requests per second:    426.65 [#/sec] (mean)         ← Throughput
+Time per request:       117.2  [ms]    (mean)          ← Avg latency
+Time per request:       2.344  [ms]    (mean across all concurrent)
+Transfer rate:          514.0  [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        1    2   0.9      2       8
+Processing:    45  115  25.3    112     350
+Waiting:       44  114  25.2    111     349
+Total:         47  117  25.2    114     352
+
+Percentage of the requests served within a certain time (ms)
+  50%    114    ← Median
+  66%    120
+  75%    125
+  80%    128
+  90%    140
+  95%    155
+  98%    185
+  99%    210
+ 100%    352 (longest request)
+```
+
+| Metric | What to Watch |
+|--------|--------------|
+| `Requests per second` | Server throughput — higher is better |
+| `Time per request` (mean) | Average latency — lower is better |
+| `Failed requests` | Should be 0; non-zero means overload or errors |
+| `99th percentile` | Long-tail latency — affects 1% of users |
+| `max` | Worst-case response time |
+
+---
+
+
+
+# 54. `openssl s_client` — SSL/TLS Testing
+
+`openssl s_client` is a diagnostic tool for testing TLS connections, inspecting certificates, and troubleshooting SSL/TLS issues. It is part of the `openssl` package, installed by default on most Linux systems.
+
+## Basic Connection Testing
+
+```bash
+# Connect to an HTTPS server
+openssl s_client -connect example.com:443
+
+# Connect with SNI (Server Name Indication) — required for modern hosting
+openssl s_client -connect example.com:443 -servername example.com
+
+# Quick check: just show the certificate (exit immediately)
+echo | openssl s_client -connect example.com:443 -servername example.com
+
+# Show only the certificate
+echo | openssl s_client -connect example.com:443 2>/dev/null |   openssl x509 -noout -text
+
+# Quiet output (no diagnostic noise)
+echo | openssl s_client -connect example.com:443 -quiet 2>/dev/null
+```
+
+## Certificate Inspection
+
+```bash
+# Show full certificate details
+echo | openssl s_client -connect example.com:443   -servername example.com 2>/dev/null | openssl x509 -noout -text
+
+# Show only validity dates
+echo | openssl s_client -connect example.com:443   -servername example.com 2>/dev/null |   openssl x509 -noout -dates
+
+# Show subject (CN, SANs)
+echo | openssl s_client -connect example.com:443   -servername example.com 2>/dev/null |   openssl x509 -noout -subject
+
+# Show issuer
+echo | openssl s_client -connect example.com:443   -servername example.com 2>/dev/null |   openssl x509 -noout -issuer
+
+# Show Subject Alternative Names (all valid hostnames)
+echo | openssl s_client -connect example.com:443   -servername example.com 2>/dev/null |   openssl x509 -noout -ext subjectAltName
+
+# Show fingerprint (SHA-256)
+echo | openssl s_client -connect example.com:443   -servername example.com 2>/dev/null |   openssl x509 -noout -fingerprint -sha256
+
+# Show the full certificate chain
+openssl s_client -connect example.com:443   -servername example.com -showcerts 2>/dev/null
+```
+
+## TLS Version and Cipher Testing
+
+```bash
+# Force TLS 1.2 only
+openssl s_client -connect example.com:443 -tls1_2
+
+# Force TLS 1.3 only
+openssl s_client -connect example.com:443 -tls1_3
+
+# Force TLS 1.1 (shows if server accepts older, insecure versions)
+openssl s_client -connect example.com:443 -tls1_1
+
+# Test specific cipher suite
+openssl s_client -connect example.com:443 -cipher AES128-SHA
+
+# List ciphers that work against a server (requires a script)
+for cipher in $(openssl ciphers 'ALL:eNULL' | tr ':' ' '); do
+  result=$(echo | openssl s_client -connect example.com:443     -cipher "$cipher" 2>/dev/null | grep -c "Cipher is")
+  [ $result -eq 1 ] && echo "$cipher: ACCEPTED" || echo "$cipher: REJECTED"
+done
+
+# Show negotiated cipher suite
+echo | openssl s_client -connect example.com:443 2>/dev/null | grep "Cipher is"
+```
+
+## STARTTLS Testing
+
+```bash
+# SMTP with STARTTLS (port 587)
+openssl s_client -connect smtp.example.com:587 -starttls smtp
+
+# IMAP with STARTTLS (port 143)
+openssl s_client -connect imap.example.com:143 -starttls imap
+
+# POP3 with STARTTLS (port 110)
+openssl s_client -connect pop3.example.com:110 -starttls pop3
+
+# FTP with STARTTLS
+openssl s_client -connect ftp.example.com:21 -starttls ftp
+
+# LDAP with STARTTLS
+openssl s_client -connect ldap.example.com:389 -starttls ldap
+
+# XMPP
+openssl s_client -connect xmpp.example.com:5222 -starttls xmpp
+```
+
+## Client Certificates and Verification
+
+```bash
+# Use a client certificate for mutual TLS (mTLS)
+openssl s_client -connect api.example.com:443   -cert client.crt   -key client.key
+
+# Verify certificate against a CA file
+openssl s_client -connect example.com:443   -CAfile /etc/ssl/certs/ca-certificates.crt   -verify 5
+
+# Check if a certificate matches a key
+openssl x509 -noout -modulus -in cert.pem | md5sum
+openssl rsa  -noout -modulus -in key.pem  | md5sum
+# Both md5sums must match
+```
+
+## Debugging and Advanced Options
+
+```bash
+# Connect via a proxy
+openssl s_client -connect example.com:443   -proxy proxy.example.com:8080
+
+# Show internal state (debugging TLS handshake)
+openssl s_client -connect example.com:443 -state
+
+# Show debug info for the handshake
+openssl s_client -connect example.com:443 -debug
+
+# Connect to an IP but present a different SNI
+openssl s_client -connect 1.2.3.4:443 -servername example.com
+
+# Test OCSP stapling
+echo | openssl s_client -connect example.com:443   -servername example.com -status 2>/dev/null | grep -A 20 "OCSP response"
+
+# Check certificate expiry in days (scriptable)
+EXPIRY=$(echo | openssl s_client -connect example.com:443   -servername example.com 2>/dev/null |   openssl x509 -noout -enddate | cut -d= -f2)
+DAYS=$(( ($(date -d "$EXPIRY" +%s) - $(date +%s)) / 86400 ))
+echo "Certificate expires in $DAYS days"
+```
+
+---
+
+
+
+# 55. `tcpflow` — TCP Stream Reconstruction
+
+`tcpflow` captures TCP connections and reconstructs each stream into separate files, making it easy to read the actual data exchanged in a TCP session. Unlike `tcpdump`, it focuses on content rather than packet-level detail.
+
+## Installation
+
+```bash
+sudo apt install tcpflow             # Debian/Ubuntu
+sudo dnf install tcpflow             # RHEL/Fedora
+```
+
+## Basic Usage
+
+```bash
+# Capture all TCP streams on default interface
+sudo tcpflow -i eth0
+
+# Capture on all interfaces
+sudo tcpflow -i any
+
+# Capture and print to console instead of files
+sudo tcpflow -c -i eth0
+
+# Capture with timestamp in output
+sudo tcpflow -c -t -i eth0
+
+# Capture with verbose output (shows connection info)
+sudo tcpflow -c -v -i eth0
+```
+
+## Filtering
+
+tcpflow uses the same BPF filter syntax as tcpdump:
+
+```bash
+# Capture only HTTP traffic (port 80)
+sudo tcpflow -c -i eth0 port 80
+
+# Capture only traffic to/from a specific host
+sudo tcpflow -c -i eth0 host 192.168.1.1
+
+# Capture specific host and port
+sudo tcpflow -c -i eth0 host 192.168.1.1 and port 80
+
+# Capture a subnet
+sudo tcpflow -c -i eth0 net 192.168.1.0/24
+
+# Capture DNS (TCP DNS, usually for large responses)
+sudo tcpflow -c -i eth0 port 53
+
+# Capture all traffic except SSH (avoid capturing your own session)
+sudo tcpflow -c -i eth0 not port 22
+```
+
+## Output to Files
+
+By default, tcpflow saves each TCP stream to a separate file named by the connection endpoints:
+
+```bash
+# Save to current directory (default behavior)
+sudo tcpflow -i eth0 port 80
+
+# Files created:
+# 192.168.001.100.54321-093.184.216.034.00080  (client → server)
+# 093.184.216.034.00080-192.168.001.100.54321  (server → client)
+
+# Specify output directory
+sudo tcpflow -o /tmp/captures/ -i eth0 port 80
+
+# Capture to directory with timestamp suffix
+sudo tcpflow -o /tmp/captures/ -t -i eth0
+
+# Limit capture to N bytes per flow
+sudo tcpflow -m 10000 -o /tmp/caps/ -i eth0
+
+# Read from a pcap file instead of live capture
+sudo tcpflow -r capture.pcap
+
+# Read pcap and print to console
+sudo tcpflow -c -r capture.pcap
+
+# Process all pcap files in a directory
+sudo tcpflow -c -r /tmp/pcaps/*.pcap
+```
+
+## Reading Reconstructed Streams
+
+```bash
+# After capturing HTTP on port 80:
+ls *.00080* 2>/dev/null
+
+# Read the request (client → server)
+cat 192.168.001.100.54321-093.184.216.034.00080
+# Output: GET / HTTP/1.1
+#         Host: example.com
+#         ...
+
+# Read the response (server → client)
+cat 093.184.216.034.00080-192.168.001.100.54321
+# Output: HTTP/1.1 200 OK
+#         Content-Type: text/html
+#         ...
+
+# Search for passwords in captured HTTP traffic (for security audits)
+grep -r "password\|passwd\|secret" *.00080* 2>/dev/null
+```
+
+## XML/Metadata Report
+
+```bash
+# Generate XML report with connection metadata
+sudo tcpflow -r capture.pcap -Fk -X report.xml
+
+# Report includes:
+# - Source/destination IP and port
+# - Start/end timestamps
+# - Byte counts per direction
+# - MD5 hash of each stream
+```
+
+## Combining with tcpdump
+
+```bash
+# Capture to pcap with tcpdump, analyze with tcpflow
+sudo tcpdump -i eth0 -w capture.pcap port 80 &
+sleep 30
+kill %1
+sudo tcpflow -c -r capture.pcap
+
+# Pipe tcpdump to tcpflow in real time
+sudo tcpdump -i eth0 -w - port 80 | sudo tcpflow -r -
+```
+
+---
+
+
+
+# 56. `tshark` — Terminal Wireshark (CLI Packet Analyzer)
+
+`tshark` is the command-line version of Wireshark — a powerful protocol analyzer that captures and decodes packets using Wireshark's full dissector library. It supports hundreds of protocols and is ideal for scripting and non-GUI environments.
+
+## Installation
+
+```bash
+sudo apt install tshark              # Debian/Ubuntu
+sudo dnf install wireshark-cli       # RHEL/Fedora
+# Add your user to the wireshark group to capture without root:
+sudo usermod -aG wireshark $USER
+```
+
+## Basic Capture
+
+```bash
+# Capture on a specific interface
+tshark -i eth0
+
+# Capture on any interface
+tshark -i any
+
+# List available interfaces
+tshark -D
+
+# Capture for 30 seconds
+tshark -i eth0 -a duration:30
+
+# Capture N packets then stop
+tshark -i eth0 -c 100
+
+# Capture until file reaches 10 MB
+tshark -i eth0 -a filesize:10240
+
+# Capture verbosely (full protocol decode)
+tshark -i eth0 -V
+```
+
+## Saving and Reading Files
+
+```bash
+# Save capture to pcap file
+tshark -i eth0 -w capture.pcap
+
+# Read from a pcap file
+tshark -r capture.pcap
+
+# Read and decode verbosely
+tshark -r capture.pcap -V
+
+# Rotate files: max 5 files of 100MB each
+tshark -i eth0 -b filesize:102400 -b files:5 -w /tmp/cap.pcap
+
+# Read first 100 packets from pcap
+tshark -r capture.pcap -c 100
+
+# Decompress gzipped pcap
+tshark -r capture.pcap.gz
+```
+
+## Capture Filters (BPF — Applied During Capture)
+
+```bash
+# Capture only HTTP
+tshark -i eth0 -f "port 80"
+
+# Capture only traffic to/from specific host
+tshark -i eth0 -f "host 192.168.1.1"
+
+# Capture DNS
+tshark -i eth0 -f "port 53"
+
+# Capture without your SSH session
+tshark -i eth0 -f "not port 22"
+
+# Capture ICMP
+tshark -i eth0 -f "icmp"
+```
+
+## Display Filters (Wireshark DSL — Applied After Decode)
+
+Display filters are much more powerful than BPF filters — they understand protocols:
+
+```bash
+# Filter by protocol
+tshark -r capture.pcap -Y "http"
+tshark -r capture.pcap -Y "dns"
+tshark -r capture.pcap -Y "tls"
+tshark -r capture.pcap -Y "tcp"
+
+# HTTP GET requests only
+tshark -r capture.pcap -Y "http.request.method == GET"
+
+# DNS queries only (not responses)
+tshark -r capture.pcap -Y "dns.flags.response == 0"
+
+# TLS handshakes
+tshark -r capture.pcap -Y "ssl.record.content_type == 22"
+
+# TCP with RST flag
+tshark -r capture.pcap -Y "tcp.flags.reset == 1"
+
+# Packets larger than 1400 bytes
+tshark -r capture.pcap -Y "frame.len > 1400"
+
+# Traffic between two specific hosts
+tshark -r capture.pcap -Y "ip.addr == 192.168.1.1 && ip.addr == 10.0.0.1"
+
+# HTTP response codes ≥ 400 (errors)
+tshark -r capture.pcap -Y "http.response.code >= 400"
+
+# Capture live with display filter
+tshark -i eth0 -Y "http.request"
+```
+
+## Extracting Specific Fields
+
+```bash
+# Extract source and destination IPs
+tshark -r capture.pcap -T fields -e ip.src -e ip.dst
+
+# Extract HTTP request URLs
+tshark -r capture.pcap -Y "http.request" -T fields   -e ip.src -e http.host -e http.request.uri
+
+# Extract DNS query names
+tshark -r capture.pcap -Y "dns.flags.response == 0" -T fields   -e frame.time -e ip.src -e dns.qry.name
+
+# Extract TLS SNI (server name)
+tshark -r capture.pcap -Y "ssl.handshake.extensions_server_name" -T fields   -e ip.src -e ssl.handshake.extensions_server_name
+
+# Extract with tab separator and header line
+tshark -r capture.pcap -T fields   -e ip.src -e ip.dst -e tcp.dstport   -E header=y -E separator=\t
+```
+
+## Statistics
+
+```bash
+# Protocol hierarchy (breakdown by protocol %)
+tshark -r capture.pcap -q -z io,phs
+
+# Connection conversations (IP pairs)
+tshark -r capture.pcap -q -z conv,ip
+
+# TCP conversations
+tshark -r capture.pcap -q -z conv,tcp
+
+# Endpoint statistics (per-IP traffic)
+tshark -r capture.pcap -q -z endpoints,ip
+
+# HTTP statistics
+tshark -r capture.pcap -q -z http,stat
+
+# DNS statistics
+tshark -r capture.pcap -q -z dns,tree
+
+# Expert info (warnings, errors, notes)
+tshark -r capture.pcap -q -z expert
+```
+
+## Output Formats
+
+```bash
+# Default text output
+tshark -r capture.pcap
+
+# JSON output
+tshark -r capture.pcap -T json
+
+# PDML (Packet Details Markup Language — XML)
+tshark -r capture.pcap -T pdml
+
+# EK (Elasticsearch-compatible JSON)
+tshark -r capture.pcap -T ek
+
+# CSV of specific fields
+tshark -r capture.pcap -T fields -e ip.src -e ip.dst -E separator=,
+
+# Tabs (fields mode)
+tshark -r capture.pcap -T fields -e ip.src -e tcp.dstport -E separator=\t
+```
+
+---
+
+
 
 ---
 
@@ -4680,6 +8285,10 @@ sudo sysctl -w net.ipv4.conf.all.log_martians=1
 echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p                        # Reload
 ```
+
+---
+
+*End of Complete Linux Network Commands Reference*
 
 ---
 

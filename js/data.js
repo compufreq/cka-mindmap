@@ -53,10 +53,14 @@ const GUIDE_LINKS = {
     { title: "ss — Socket Statistics", url: "pages/guide.html?id=linux-networking#heading-47-6-ss-socket-statistics", guide: "Linux Networking Guide" }
   ],
   'gateway-api': [
-    { title: "Chapter 11 — Gateway API: Modern Ingress Management", url: "pages/guide.html?id=kubernetes#heading-148-chapter-11-gateway-api-modern-ingress-traffic-m", guide: "Kubernetes Guide" }
+    { title: "Chapter 11 — Gateway API: Modern Ingress Management", url: "pages/guide.html?id=kubernetes#heading-148-chapter-11-gateway-api-modern-ingress-traffic-m", guide: "Kubernetes Guide" },
+    { title: "Gateway API Complete Guide", url: "pages/guide.html?id=gateway-api", guide: "Gateway API Guide" },
+    { title: "Gateway API CKA Step-by-Step Guide", url: "pages/guide.html?id=gateway-api-cka", guide: "Gateway API CKA Guide" }
   ],
   'ingress': [
     { title: "Chapter 13 — Ingress: HTTP Routing and TLS Termination", url: "pages/guide.html?id=kubernetes#heading-169-chapter-13-ingress-http-routing-and-tls-termina", guide: "Kubernetes Guide" },
+    { title: "Ingress Complete Guide", url: "pages/guide.html?id=ingress", guide: "Ingress Guide" },
+    { title: "Ingress CKA Step-by-Step Guide", url: "pages/guide.html?id=ingress-cka", guide: "Ingress CKA Guide" },
     { title: "curl — Data Transfer Tool", url: "pages/guide.html?id=linux-networking#heading-57-8-curl-data-transfer-tool", guide: "Linux Networking Guide" }
   ],
   'network-policies': [
@@ -65,6 +69,8 @@ const GUIDE_LINKS = {
   ],
   'coredns': [
     { title: "Chapter 26 — CoreDNS: Testing, Diagnosing & Verifying DNS", url: "pages/guide.html?id=kubernetes#heading-295-chapter-26-coredns-testing-diagnosing-and-ver", guide: "Kubernetes Guide" },
+    { title: "CoreDNS Complete Guide", url: "pages/guide.html?id=coredns", guide: "CoreDNS Guide" },
+    { title: "CoreDNS CKA Step-by-Step Guide", url: "pages/guide.html?id=coredns-cka", guide: "CoreDNS CKA Guide" },
     { title: "dig — DNS Lookup Utility", url: "pages/guide.html?id=linux-networking#heading-80-10-dig-dns-lookup-utility", guide: "Linux Networking Guide" },
     { title: "nslookup — DNS Query Tool", url: "pages/guide.html?id=linux-networking#heading-86-11-nslookup-dns-query-tool", guide: "Linux Networking Guide" }
   ],
@@ -96,6 +102,8 @@ const GUIDE_LINKS = {
   'network-troubleshooting': [
     { title: "Chapter 25 — Network Testing from Ephemeral Containers", url: "pages/guide.html?id=kubernetes#heading-288-chapter-25-network-testing-from-ephemeral-contai", guide: "Kubernetes Guide" },
     { title: "Chapter 26 — CoreDNS: Testing & Diagnosing DNS", url: "pages/guide.html?id=kubernetes#heading-295-chapter-26-coredns-testing-diagnosing-and-ver", guide: "Kubernetes Guide" },
+    { title: "CoreDNS CKA Guide — Debug DNS Issues", url: "pages/guide.html?id=coredns-cka#heading-19-task-06-debug-coredns-pods-crashing", guide: "CoreDNS CKA Guide" },
+    { title: "Ingress CKA Guide — Debug a Broken Ingress", url: "pages/guide.html?id=ingress-cka#heading-22-task-7-debug-a-broken-ingress", guide: "Ingress CKA Guide" },
     { title: "traceroute — Trace the Route to a Host", url: "pages/guide.html?id=linux-networking#heading-35-3-traceroute-trace-the-route-to-a-host", guide: "Linux Networking Guide" },
     { title: "tcpdump — Packet Capture & Analysis", url: "pages/guide.html?id=linux-networking#heading-109-14-tcpdump-packet-capture-analysis", guide: "Linux Networking Guide" }
   ]
