@@ -21,7 +21,7 @@
     'gateway-api-cka': {
       file: '../guides/gateway-api-cka-guide.md',
       title: 'Gateway API CKA Step-by-Step Guide',
-      breadcrumb: 'Gateway API CKA Guide'
+      breadcrumb: 'Gateway API Step-By-Step Guide'
     },
     'coredns': {
       file: '../guides/coredns-complete-guide.md',
@@ -31,7 +31,7 @@
     'coredns-cka': {
       file: '../guides/coredns-cka-guide.md',
       title: 'CoreDNS CKA Step-by-Step Guide',
-      breadcrumb: 'CoreDNS CKA Guide'
+      breadcrumb: 'CoreDNS Step-By-Step Guide'
     },
     'ingress': {
       file: '../guides/ingress-complete-guide.md',
@@ -41,7 +41,7 @@
     'ingress-cka': {
       file: '../guides/ingress-cka-guide.md',
       title: 'Ingress CKA Step-by-Step Guide',
-      breadcrumb: 'Ingress CKA Guide'
+      breadcrumb: 'Ingress Step-By-Step Guide'
     }
   };
 
