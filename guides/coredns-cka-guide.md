@@ -3,7 +3,7 @@
 > **Exam Relevance:** CoreDNS appears in the "Cluster Architecture, Installation & Configuration" and "Services & Networking" domains (~23% combined weight).[^cka-curriculum]  
 > **Time Budget:** Know how to complete any CoreDNS task in under 5 minutes  
 > **Tools available in exam:** `kubectl`, `vim`/`nano`, `nslookup`, `dig`, `curl`, `crictl`  
-> **Official Docs allowed in exam:** https://kubernetes.io/docs/ and https://coredns.io/
+
 
 ---
 
