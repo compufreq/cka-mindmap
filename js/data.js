@@ -121,7 +121,7 @@ const MIND_MAP_DATA = {
 
   // ===== LEVEL 0: MAIN =====
   "main": {
-    title: "CKA Certification",
+    title: "CKA Certification Study Summary",
     subtitle: "Certified Kubernetes Administrator | Kubernetes v1.34 | 2025-2026",
     parent: null,
     parentTitle: null,
