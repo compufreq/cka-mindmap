@@ -42,6 +42,11 @@
       file: '../guides/ingress-cka-guide.md',
       title: 'Ingress CKA Step-by-Step Guide',
       breadcrumb: 'Ingress Step-By-Step Guide'
+    },
+    'k8s-install': {
+      file: '../Kubernetes installation/guide.md',
+      title: 'Kubernetes HA Cluster Setup Lab Guide',
+      breadcrumb: 'K8s HA Cluster Setup'
     }
   };
 
