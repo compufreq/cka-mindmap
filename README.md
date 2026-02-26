@@ -9,9 +9,15 @@ An interactive mind map for the **Certified Kubernetes Administrator (CKA)** exa
 - **Interactive Mind Map** — D3.js-powered radial mind map with click-to-navigate drill-down across 3 levels: Domains > Sub-topics > Leaf nodes
 - **5 Exam Domains** — Cluster Architecture (25%), Workloads & Scheduling (15%), Services & Networking (20%), Storage (10%), Troubleshooting (30%)
 - **Leaf Node Detail Panels** — Click any leaf node to see key concepts, kubectl commands, and links to relevant study guide chapters
-- **Two Comprehensive Study Guides:**
+- **8 Comprehensive Study Guides:**
   - **Kubernetes CKA Guide** — 30 chapters, 13,000+ lines covering every exam topic in depth
   - **Linux Networking Guide** — 56 sections, 4,600+ lines of network commands reference
+  - **Gateway API Complete Guide** — 20 sections on modern ingress traffic management
+  - **Gateway API Step-By-Step Guide** — 10 hands-on tasks for CKA practice
+  - **Ingress Complete Guide** — 14 sections on HTTP routing & TLS termination
+  - **Ingress Step-By-Step Guide** — 8 hands-on tasks for CKA practice
+  - **CoreDNS Complete Guide** — 12 sections on DNS & service discovery
+  - **CoreDNS Step-By-Step Guide** — 8 hands-on tasks for CKA practice
 - **Study Guide Viewer** — Sidebar table of contents, scroll spy, session caching for instant repeat visits
 - **Dark Theme** — Kubernetes-branded design with color-coded domain branches
 - **Responsive** — Works on desktop and tablet
@@ -49,14 +55,49 @@ cka_mindmap_website/
 │   └── guide.js            # Guide loader (fetch, parse, cache)
 ├── guides/
 │   ├── kubernetes-complete-guide.md    # 30-chapter CKA reference
-│   └── linux-network-commands.md       # Linux networking reference
+│   ├── linux-network-commands.md       # Linux networking reference
+│   ├── gateway-api-complete-guide.md   # Gateway API complete guide
+│   ├── gateway-api-cka-guide.md        # Gateway API step-by-step
+│   ├── ingress-complete-guide.md       # Ingress complete guide
+│   ├── ingress-cka-guide.md            # Ingress step-by-step
+│   ├── coredns-complete-guide.md       # CoreDNS complete guide
+│   └── coredns-cka-guide.md            # CoreDNS step-by-step
 ├── lib/
 │   └── marked.min.js       # Markdown parser
+├── Kubernetes installation/
+│   ├── guide.md                        # HA cluster setup guide
+│   └── scripts/                        # 12 automation scripts
+│       ├── env.sh                      # Shared environment variables
+│       ├── 01-setup-hosts.sh           # /etc/hosts & hostnames
+│       ├── 02-setup-firewall.sh        # UFW firewall rules
+│       ├── 03-setup-haproxy.sh         # HAProxy load balancer
+│       ├── 04-install-k8s-packages.sh  # containerd + kubeadm
+│       ├── 05-init-cluster.sh          # kubeadm init (CP1)
+│       ├── 06-join-controlplane.sh     # Join control plane 2
+│       ├── 07-join-workers.sh          # Join worker nodes
+│       ├── 08-install-calico.sh        # Calico CNI
+│       ├── 09-verify.sh               # Cluster verification
+│       ├── 10-setup-certs.sh           # TLS certificates
+│       └── deploy-all.sh              # Full orchestrator
 ├── LICENSE                 # CC BY-NC-ND 4.0
 └── .github/
     └── workflows/
         └── deploy.yml      # GitHub Pages auto-deploy
 ```
+
+## Kubernetes HA Cluster Installation
+
+A complete guide and automation scripts for deploying a highly available Kubernetes cluster from scratch using kubeadm.
+
+**Architecture:**
+- 1 HAProxy load balancer (`10.10.10.10`)
+- 2 control plane nodes (`10.10.10.11`, `10.10.10.12`)
+- 2 worker nodes (`10.10.10.14`, `10.10.10.15`)
+
+**What's included:**
+- Step-by-step guide (`Kubernetes installation/guide.md`) covering the full setup from bare Ubuntu servers to a production-ready HA cluster
+- 12 automation scripts that handle host configuration, firewall rules, HAProxy setup, kubeadm installation, cluster initialization, node joining, Calico CNI, verification, and TLS certificate management
+- A `deploy-all.sh` orchestrator script that runs the entire setup end-to-end
 
 ## How to Use
 
