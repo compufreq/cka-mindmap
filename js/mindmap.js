@@ -15,6 +15,20 @@
     window.location.hash = key;
   }
 
+  // Support ?page= query parameter for deep linking (survives URL shortener redirects
+  // where hash fragments like #rbac get stripped). On load, convert ?page=X to #X.
+  (function handleQueryParamDeepLink() {
+    var params = new URLSearchParams(window.location.search);
+    var page = params.get('page');
+    if (page && MIND_MAP_DATA[page]) {
+      // Replace URL: remove ?page= param and set the hash instead
+      params.delete('page');
+      var cleanSearch = params.toString();
+      var newUrl = window.location.pathname + (cleanSearch ? '?' + cleanSearch : '') + '#' + page;
+      window.history.replaceState(null, '', newUrl);
+    }
+  })();
+
   // Render breadcrumbs
   function renderBreadcrumbs(pageData, pageKey) {
     var breadcrumbEl = document.getElementById('breadcrumbs');
@@ -648,6 +662,9 @@
     // Study Guides (from node or from GUIDE_LINKS for current page)
     var guideItems = node.guides || [];
     var currentPageKey = getPageKey();
+    if (typeof GUIDE_LINKS === 'undefined') {
+      console.warn('[MindMap] GUIDE_LINKS not loaded — data.js may be cached or failed to load');
+    }
     if (guideItems.length === 0 && typeof GUIDE_LINKS !== 'undefined' && GUIDE_LINKS[currentPageKey]) {
       guideItems = GUIDE_LINKS[currentPageKey];
     }
@@ -759,7 +776,10 @@
     if (e.key === 'Escape') closeDetailPanel();
   });
 
-  // Initial render
+  // Initial render — log diagnostic info to help debug caching issues
+  console.log('[MindMap] Init: GUIDE_LINKS=' + (typeof GUIDE_LINKS !== 'undefined' ? Object.keys(GUIDE_LINKS).length + ' entries' : 'UNDEFINED') +
+    ', MIND_MAP_DATA=' + (typeof MIND_MAP_DATA !== 'undefined' ? 'loaded' : 'UNDEFINED') +
+    ', pageKey=' + getPageKey());
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       renderMindMap(getPageKey());
