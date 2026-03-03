@@ -306,15 +306,6 @@
   }
 
   // --- Match Navigation ---
-  function getOffsetTop(el, container) {
-    var top = 0;
-    while (el && el !== container) {
-      top += el.offsetTop;
-      el = el.offsetParent;
-    }
-    return top;
-  }
-
   function goToMatch(index) {
     // Remove "current" from previous
     if (state.currentIndex >= 0 && state.currentIndex < state.matches.length) {
@@ -326,13 +317,21 @@
     if (!mark) return;
     mark.classList.add('current');
 
-    // Scroll the match into view within .guide-content
+    // Scroll the match into view within .guide-content using getBoundingClientRect
+    // for reliable positioning regardless of nesting depth
     var content = document.getElementById('guide-content');
     if (content) {
-      var markTop = getOffsetTop(mark, content);
-      var scrollTarget = markTop - content.clientHeight / 3;
+      var contentRect = content.getBoundingClientRect();
+      var markRect = mark.getBoundingClientRect();
+
+      // How far the mark is from the top of the visible content area
+      var markRelativeTop = markRect.top - contentRect.top;
+
+      // Scroll so the match sits roughly 1/3 from the top of the visible area
+      var targetScroll = content.scrollTop + markRelativeTop - contentRect.height / 3;
+
       content.scrollTo({
-        top: Math.max(0, scrollTarget),
+        top: Math.max(0, targetScroll),
         behavior: 'smooth'
       });
     }
