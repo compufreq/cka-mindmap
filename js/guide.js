@@ -96,6 +96,17 @@
       .trim();
   }
 
+  // Scroll a heading into view inside .guide-content WITHOUT scrolling the
+  // body/window (which scrollIntoView can do, pushing the header off-screen).
+  function scrollContentTo(target, behavior) {
+    var content = document.querySelector('.guide-content');
+    if (!content || !target) return;
+    var contentRect = content.getBoundingClientRect();
+    var targetRect = target.getBoundingClientRect();
+    var offset = targetRect.top - contentRect.top;
+    content.scrollTo({ top: content.scrollTop + offset, behavior: behavior || 'smooth' });
+  }
+
   function buildTOC(article) {
     var headings = article.querySelectorAll('h1, h2, h3');
     var tocContainer = document.getElementById('sidebar-toc');
@@ -121,7 +132,7 @@
         e.preventDefault();
         var target = document.getElementById(id);
         if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          scrollContentTo(target, 'smooth');
           history.replaceState(null, null, '#' + id);
         }
         document.getElementById('guide-sidebar').classList.remove('mobile-open');
@@ -215,7 +226,7 @@
       var hashTarget = document.getElementById(window.location.hash.slice(1));
       if (hashTarget) {
         setTimeout(function () {
-          hashTarget.scrollIntoView({ block: 'start' });
+          scrollContentTo(hashTarget, 'auto');
         }, 100);
       }
     }
