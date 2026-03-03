@@ -206,6 +206,11 @@
     setupScrollSpy(tocItems);
     setupBackToTop();
 
+    // Initialize search feature after content is rendered
+    if (typeof window.initGuideSearch === 'function') {
+      window.initGuideSearch();
+    }
+
     if (window.location.hash) {
       var hashTarget = document.getElementById(window.location.hash.slice(1));
       if (hashTarget) {
